@@ -46,12 +46,25 @@ public final class LauncherSettingsActivity extends Activity {
     private boolean animations;
     private boolean advancedEffects;
 
+    private SettingsPanel panel;
+
+    @Override
+    public void onBackPressed() {
+        if (panel != null && panel.onBack()) return;
+        super.onBackPressed();
+    }
+
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        setContentView(R.layout.activity_launcher_settings);
         choices = getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE);
         Config config = Config.load(this);
+        if (config.settingsPanel) {
+            // settings_panel: the side panel draws itself; the rows below belong to the full-screen page.
+            panel = new SettingsPanel(this, config, choices, this::changed);
+            return;
+        }
+        setContentView(R.layout.activity_launcher_settings);
         View reorderChoice = findViewById(R.id.reorderChoice);
         reorderChoice.setVisibility(config.launcherSettingsButton ? View.VISIBLE : View.GONE);
         reorderChoice.setOnClickListener(v -> {

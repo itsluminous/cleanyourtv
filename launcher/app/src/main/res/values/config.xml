@@ -424,6 +424,11 @@
          click away when launcher_settings_button sends a click on Settings to this page. Off by default; a theme can
          set "tv_settings_first": true. -->
     <bool name="tv_settings_first">false</bool>
+    <!-- Launcher settings as a side panel over Home in the style of the TV's own Settings: a dark sheet on the right
+         with TV system settings first, then the launcher's rows with their current value; a row with several values
+         opens a list in the same panel, Back returns. With launcher_settings_button the Settings pill keeps its gear
+         and its "Settings" label. Off by default (the full-screen page); a theme can set "settings_panel": true. -->
+    <bool name="settings_panel">false</bool>
 
     <!-- Apps pre-seeded into the App library's "added" set at startup (config.xml library_apps, or a theme's
          config.json). They show on Home as if the owner had added them in the App library UI, and stay

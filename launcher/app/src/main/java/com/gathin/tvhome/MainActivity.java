@@ -817,7 +817,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return true;
         });
         launcherSettingsButton = cfg.launcherSettingsButton;
-        if (launcherSettingsButton) {
+        if (launcherSettingsButton && !cfg.settingsPanel) {
+            // With settings_panel the pill keeps its gear and "Settings": the panel it opens holds both kinds.
             ((TextView) btnSettings).setText(R.string.launcher_settings);
             ((TextView) btnSettings).setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_home_settings_pill, 0, 0, 0);
         }

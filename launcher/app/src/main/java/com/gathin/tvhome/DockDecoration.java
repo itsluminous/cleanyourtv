@@ -34,6 +34,8 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private final boolean singleRow;
     /** dock_band_all: in a single row, the band runs behind every app instead of the dock apps only. */
     private final boolean bandAll;
+    /** The gap below the dock row, dp: 12 for the layout's own row_gap (AppAdapter.dockBottomDp). */
+    private int bottomDp = 12;
 
     /**
      * @param translucent the cinematic shelf's band: the artwork and the glow show through it.
@@ -61,6 +63,12 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         edge.setColor(lightGlass ? 0x38FFFFFF : translucent ? 0x26FFFFFF : 0x1FFFFFFF);
     }
 
+    /** row_gap: the offset below the dock row follows the gap between the rows (AppAdapter.dockBottomDp). */
+    DockDecoration bottomDp(int dp) {
+        bottomDp = dp;
+        return this;
+    }
+
     /** Concentric corners: the band's radius is the tiles' radius plus the band's padding around them. */
     static float radiusPx(float tileRadiusPx, float paddingPx) {
         return tileRadiusPx + paddingPx;
@@ -81,7 +89,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         int pos = parent.getChildAdapterPosition(view);
         if (pos >= 0 && (singleRow || pos < dockSize)) {
             outRect.top = (int) (6 * density);
-            outRect.bottom = (int) (12 * density);
+            outRect.bottom = (int) (bottomDp * density);
         }
     }
 

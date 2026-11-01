@@ -21,7 +21,8 @@ import java.util.List;
  * content://com.kupraki.traktshelf.hero/image/poster/<_id>       the poster JPEG
  *
  * poster_path and backdrop_path hold those image URIs, so a reader opens them with ContentResolver.openInputStream
- * and never needs a file permission. Observers of /items are notified after every sync.
+ * and never needs a file permission. Observers of /items are notified after every sync and after a Settings change
+ * (the rows, the count and the watchlist order come from Prefs on every query).
  */
 public final class HeroProvider extends ContentProvider {
     private static final String TAG = "TraktShelf.Provider";
@@ -29,7 +30,6 @@ public final class HeroProvider extends ContentProvider {
     public static final Uri ITEMS = Uri.parse("content://" + AUTHORITY + "/items");
     static final String[] COLUMNS = {"_id", "kind", "title", "year", "synopsis", "imdb_rating", "rt_rating", "trakt_rating",
             "imdb_id", "trakt_id", "poster_path", "backdrop_path", "source_row", "rank", "meta", "next_episode"};
-    private static final int MAX_ITEMS = 12;
     private static final int M_ITEMS = 1, M_BACKDROP = 2, M_POSTER = 3;
     private static final UriMatcher MATCHER = new UriMatcher(UriMatcher.NO_MATCH);
 
@@ -51,7 +51,7 @@ public final class HeroProvider extends ContentProvider {
         if (MATCHER.match(uri) != M_ITEMS) return null;
         MatrixCursor cursor = new MatrixCursor(COLUMNS);
         Feed feed = Feed.load(getContext());
-        List<Item> items = feed.heroItems(getContext(), MAX_ITEMS);
+        List<Item> items = feed.heroItems(getContext(), Prefs.heroItems(getContext()));
         int rank = 0;
         for (Item it : items) {
             long id = it.stableId();

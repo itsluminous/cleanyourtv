@@ -100,8 +100,12 @@ final class Trakt {
         for (int i = 0; i < a.length(); i++) {
             JSONObject e = a.getJSONObject(i);
             String type = e.optString("type", "");
-            if ("movie".equals(type) && e.has("movie")) out.add(Item.fromTrakt(e.getJSONObject("movie"), Item.MOVIE));
-            else if (e.has("show")) out.add(Item.fromTrakt(e.getJSONObject("show"), Item.SHOW));
+            Item it = null;
+            if ("movie".equals(type) && e.has("movie")) it = Item.fromTrakt(e.getJSONObject("movie"), Item.MOVIE);
+            else if (e.has("show")) it = Item.fromTrakt(e.getJSONObject("show"), Item.SHOW);
+            if (it == null) continue;
+            it.listedAt = Item.date(Item.opt(e, "listed_at"));   // the watchlist's; history entries carry watched_at
+            out.add(it);
         }
         return out;
     }

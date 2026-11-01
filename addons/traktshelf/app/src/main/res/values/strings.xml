@@ -55,6 +55,13 @@
     <string name="sign_out">Sign out</string>
     <string name="default_player">Default player</string>
     <string name="player_ask">Ask each time</string>
+    <string name="hero_rows">Carousel rows</string>
+    <string name="hero_items">Carousel items</string>
+    <string name="watchlist_order">Watchlist order</string>
+    <string name="order_added">Date added, newest first</string>
+    <string name="order_release">Release date, soonest first</string>
+    <string name="all_rows">All rows</string>
+    <string name="none">None</string>
     <string name="about_sync">Sync runs every 6 hours while the TV is online, after sign-in, and from here.</string>
     <string name="movie">Movie</string>
     <string name="show">Show</string>

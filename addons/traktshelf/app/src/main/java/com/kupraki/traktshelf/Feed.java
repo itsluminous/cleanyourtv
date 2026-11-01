@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Set;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -90,7 +91,35 @@ final class Feed {
         } catch (IOException | JSONException e) {
             Log.w(TAG, "feed.json unreadable: " + e.getMessage());
         }
+        f.orderWatchlist(c);
         return f;
+    }
+
+    /**
+     * The watchlist row in the order Settings asks for (Prefs.watchlistOrder): by date added, newest first, or by
+     * release date, the titles still to come soonest first and then the released ones newest first; items without
+     * the date keep Trakt's order at the end. Home and the provider both load the feed, so both see it.
+     */
+    void orderWatchlist(Context c) {
+        Row r = rows.get(WATCHLIST);
+        if (r == null || r.items.size() < 2) return;
+        boolean release = Prefs.ORDER_RELEASE.equals(Prefs.watchlistOrder(c));
+        final long now = System.currentTimeMillis();
+        List<Item> dated = new ArrayList<>(), undated = new ArrayList<>();
+        for (Item it : r.items) ((release ? it.released : it.listedAt) > 0 ? dated : undated).add(it);
+        if (release) {
+            Collections.sort(dated, (a, b) -> {
+                boolean fa = a.released > now, fb = b.released > now;
+                if (fa != fb) return fa ? -1 : 1;                           // upcoming first
+                return fa ? Long.compare(a.released, b.released)            // soonest first
+                        : Long.compare(b.released, a.released);             // then newest release first
+            });
+        } else {
+            Collections.sort(dated, (a, b) -> Long.compare(b.listedAt, a.listedAt));
+        }
+        r.items.clear();
+        r.items.addAll(dated);
+        r.items.addAll(undated);
     }
 
     void save(Context c) {
@@ -124,17 +153,26 @@ final class Feed {
         return null;
     }
 
-    /** Items for the launcher's carousel: a few of each row, Up Next first, only those with a backdrop on disk. */
+    /** Each row's share of the carousel, before the leftover is filled in row order (heroItems). */
+    private static final int[] HERO_WEIGHT = {4, 3, 3, 2, 3, 2};
+
+    /**
+     * Items for the launcher's carousel: Settings' rows (Prefs.heroRows) in row order, Up Next first, each with its
+     * share of max by weight, then the leftover in row order; only those with a backdrop on disk, each item once.
+     */
     List<Item> heroItems(Context c, int max) {
-        int[] quota = {4, 3, 3, 2, 3, 0};
+        Set<String> enabled = Prefs.heroRows(c);
+        int weightSum = 0;
+        for (int i = 0; i < ROW_ORDER.length; i++) if (enabled.contains(ROW_ORDER[i])) weightSum += HERO_WEIGHT[i];
         List<Item> out = new ArrayList<>();
+        if (weightSum == 0) return out;
         Map<String, Boolean> seen = new HashMap<>();
         File img = Images.dir(c);
         for (int pass = 0; pass < 2 && out.size() < max; pass++) {
             for (int i = 0; i < ROW_ORDER.length; i++) {
                 Row r = rows.get(ROW_ORDER[i]);
-                if (r == null) continue;
-                int take = pass == 0 ? quota[i] : Integer.MAX_VALUE;
+                if (r == null || !enabled.contains(ROW_ORDER[i])) continue;
+                int take = pass == 0 ? Math.max(1, Math.round(max * HERO_WEIGHT[i] / (float) weightSum)) : Integer.MAX_VALUE;
                 for (Item it : r.items) {
                     if (take <= 0 || out.size() >= max) break;
                     if (seen.containsKey(it.key()) || it.backdropUrl == null || !new File(img, it.backdropFile()).isFile()) continue;

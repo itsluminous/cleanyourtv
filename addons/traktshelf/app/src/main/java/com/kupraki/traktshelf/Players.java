@@ -24,6 +24,7 @@ final class Players {
     static final String PREFS = "settings";
     static final String KEY_PLAYER = "player";   // ask | stremio | cloudstream | netmirror
     static final String STREMIO = "com.stremio.one", CLOUDSTREAM = "com.lagradost.cloudstream3", NETMIRROR = "app.netmirror.newtv";
+    /** Trailers go to the first of these that is installed: TizenTube, then SmartTube's builds. */
     static final String[] TRAILER_PREFERRED = {"io.gh.reisxd.tizentube.cobalt", "org.smarttube.stable", "org.smarttube.beta", "com.teamsmart.videomanager.tv"};
 
     private Players() {
@@ -114,19 +115,21 @@ final class Players {
         }
         Intent view = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=" + it.trailerYoutubeId));
         List<ResolveInfo> handlers = a.getPackageManager().queryIntentActivities(view, 0);
-        List<ResolveInfo> preferred = new ArrayList<>();
-        for (String pkg : TRAILER_PREFERRED) for (ResolveInfo r : handlers) if (pkg.equals(r.activityInfo.packageName)) preferred.add(r);
-        if (preferred.size() == 1) {
-            start(a, new Intent(view).setPackage(preferred.get(0).activityInfo.packageName));
-        } else if (preferred.size() > 1) {
-            String[] names = new String[preferred.size()];
-            for (int i = 0; i < names.length; i++) names[i] = String.valueOf(preferred.get(i).loadLabel(a.getPackageManager()));
+        // TizenTube when installed, SmartTube otherwise: straight there, no chooser.
+        for (String pkg : TRAILER_PREFERRED) for (ResolveInfo r : handlers) if (pkg.equals(r.activityInfo.packageName)) {
+            start(a, new Intent(view).setPackage(pkg));
+            return;
+        }
+        if (handlers.size() == 1) {
+            start(a, new Intent(view).setPackage(handlers.get(0).activityInfo.packageName));
+        } else if (handlers.size() > 1) {
+            // Neither is installed and several other apps take YouTube links: ask.
+            String[] names = new String[handlers.size()];
+            for (int i = 0; i < names.length; i++) names[i] = String.valueOf(handlers.get(i).loadLabel(a.getPackageManager()));
             new AlertDialog.Builder(a, android.R.style.Theme_Material_Dialog_NoActionBar)
                     .setTitle(a.getString(R.string.trailer_with))
-                    .setItems(names, (d, which) -> start(a, new Intent(view).setPackage(preferred.get(which).activityInfo.packageName)))
+                    .setItems(names, (d, which) -> start(a, new Intent(view).setPackage(handlers.get(which).activityInfo.packageName)))
                     .show();
-        } else if (!handlers.isEmpty()) {
-            start(a, view);
         } else {
             start(a, new Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:" + it.trailerYoutubeId)));
         }

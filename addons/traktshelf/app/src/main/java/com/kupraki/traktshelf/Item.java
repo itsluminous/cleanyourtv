@@ -40,6 +40,10 @@ final class Item {
     long enrichedAt;
     /** The Trakt row the item first came from; the provider reports it. */
     String sourceRow;
+    /** Watchlist: when it was added (Trakt listed_at, epoch ms), for the "Date added" order. 0 when unknown. */
+    long listedAt;
+    /** Release day (a movie's released, a show's first_aired), epoch ms, for the "Release date" order. 0 when unknown. */
+    long released;
 
     /** A stable id for the provider: kind and Trakt id. */
     long stableId() {
@@ -93,7 +97,8 @@ final class Item {
                 .put("poster", posterUrl).put("backdrop", backdropUrl).put("cast", new JSONArray(cast))
                 .put("tagline", tagline).put("status", status).put("certification", certification)
                 .put("next_episode", nextEpisode).put("next_season", nextSeason).put("next_number", nextNumber)
-                .put("aired", aired).put("completed", completed).put("enriched_at", enrichedAt).put("source_row", sourceRow);
+                .put("aired", aired).put("completed", completed).put("enriched_at", enrichedAt).put("source_row", sourceRow)
+                .put("listed_at", listedAt).put("released", released);
         return j;
     }
 
@@ -127,7 +132,20 @@ final class Item {
         it.completed = j.optInt("completed");
         it.enrichedAt = j.optLong("enriched_at");
         it.sourceRow = opt(j, "source_row");
+        it.listedAt = j.optLong("listed_at");
+        it.released = j.optLong("released");
         return it;
+    }
+
+    /** "2024-05-17" or "2024-05-17T01:00:00.000Z" (Trakt's dates) to epoch ms; 0 when absent or unreadable. */
+    static long date(String iso) {
+        if (iso == null || iso.length() < 10) return 0;
+        try {
+            if (iso.length() == 10) return java.time.LocalDate.parse(iso).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli();
+            return java.time.Instant.parse(iso).toEpochMilli();
+        } catch (java.time.format.DateTimeParseException e) {
+            return 0;
+        }
     }
 
     /** Copies the metadata (not the row-specific Up Next fields) from a previously enriched copy. */
@@ -189,6 +207,7 @@ final class Item {
         it.certification = opt(media, "certification");
         String trailer = opt(media, "trailer");
         if (trailer != null) it.trailerYoutubeId = youtubeId(trailer);
+        it.released = date(opt(media, SHOW.equals(kind) ? "first_aired" : "released"));
         return it;
     }
 

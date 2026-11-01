@@ -11,9 +11,14 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import java.util.List;
+import android.app.AlertDialog;
 
-/** Account, Sync now, Default player, Sign out. */
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+/** Account, Sync now, Default player, Carousel rows, Carousel items, Watchlist order, Sign out. */
 public final class SettingsActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private LinearLayout list;
@@ -65,6 +70,22 @@ public final class SettingsActivity extends Activity {
             Players.setDefaultPlayer(this, next);
             ((TextView) v.findViewById(R.id.rowValue)).setText(playerLabel(players));
         });
+        row(getString(R.string.hero_rows), heroRowsLabel(), v -> pickHeroRows((TextView) v.findViewById(R.id.rowValue)));
+        row(getString(R.string.hero_items), String.valueOf(Prefs.heroItems(this)), v -> {
+            int cur = Prefs.heroItems(this), next = Prefs.HERO_ITEM_CHOICES[0];
+            for (int i = 0; i < Prefs.HERO_ITEM_CHOICES.length; i++) {
+                if (Prefs.HERO_ITEM_CHOICES[i] == cur && i + 1 < Prefs.HERO_ITEM_CHOICES.length) next = Prefs.HERO_ITEM_CHOICES[i + 1];
+            }
+            Prefs.setHeroItems(this, next);
+            ((TextView) v.findViewById(R.id.rowValue)).setText(String.valueOf(next));
+            settingsChanged();
+        });
+        row(getString(R.string.watchlist_order), watchlistOrderLabel(), v -> {
+            boolean release = Prefs.ORDER_RELEASE.equals(Prefs.watchlistOrder(this));
+            Prefs.setWatchlistOrder(this, release ? Prefs.ORDER_ADDED : Prefs.ORDER_RELEASE);
+            ((TextView) v.findViewById(R.id.rowValue)).setText(watchlistOrderLabel());
+            settingsChanged();
+        });
         if (signedIn) row(getString(R.string.sign_out), "", v -> {
             auth.signOut();
             Feed feed = new Feed();
@@ -75,6 +96,47 @@ public final class SettingsActivity extends Activity {
         });
         View first = list.getChildAt(0);
         if (first != null) first.requestFocus();
+    }
+
+    /** The carousel reads the provider again: Home's shelf follows a changed row set, count or order at once. */
+    private void settingsChanged() {
+        getContentResolver().notifyChange(HeroProvider.ITEMS, null);
+    }
+
+    private String heroRowsLabel() {
+        Set<String> on = Prefs.heroRows(this);
+        if (on.isEmpty()) return getString(R.string.none);
+        if (on.size() == Feed.ROW_ORDER.length) return getString(R.string.all_rows);
+        List<String> names = new ArrayList<>();
+        for (String key : Feed.ROW_ORDER) if (on.contains(key)) names.add(getString(new Feed.Row(key).titleRes()));
+        return String.join(", ", names);
+    }
+
+    /** A tick list of the six rows; OK on an entry flips it, Back keeps what is ticked. */
+    private void pickHeroRows(TextView value) {
+        Set<String> on = new LinkedHashSet<>(Prefs.heroRows(this));
+        String[] names = new String[Feed.ROW_ORDER.length];
+        boolean[] checked = new boolean[Feed.ROW_ORDER.length];
+        for (int i = 0; i < names.length; i++) {
+            names[i] = getString(new Feed.Row(Feed.ROW_ORDER[i]).titleRes());
+            checked[i] = on.contains(Feed.ROW_ORDER[i]);
+        }
+        new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_NoActionBar)
+                .setTitle(R.string.hero_rows)
+                .setMultiChoiceItems(names, checked, (d, which, isChecked) -> {
+                    if (isChecked) on.add(Feed.ROW_ORDER[which]);
+                    else on.remove(Feed.ROW_ORDER[which]);
+                    Prefs.setHeroRows(this, on);
+                    value.setText(heroRowsLabel());
+                    value.setVisibility(View.VISIBLE);
+                    settingsChanged();
+                })
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+    }
+
+    private String watchlistOrderLabel() {
+        return getString(Prefs.ORDER_RELEASE.equals(Prefs.watchlistOrder(this)) ? R.string.order_release : R.string.order_added);
     }
 
     private String playerLabel(List<Players.Player> players) {

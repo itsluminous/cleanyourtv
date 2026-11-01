@@ -160,8 +160,8 @@ final class Config {
     final boolean appLibrarySelection;
     /** OK opens every app in the library; Add to Home stays in the hold menu (library_ok_opens). */
     final boolean libraryOkOpens;
-    /** Rows of cards in the App library, 1 to 3 (library_rows); above 1 the cards are compact. */
-    final int libraryRows;
+    /** Columns of the All apps grid, 2 to 8 (library_columns); 0 keeps the one horizontal row. */
+    final int libraryColumns;
     /** Icon-only top-bar pills grow to show their name while focused (pill_labels_on_focus). */
     final boolean pillLabelsOnFocus;
     /** Icon on a card tinted from that icon, instead of the app's banner (config.xml uniform_tiles). */
@@ -286,7 +286,7 @@ final class Config {
                    String sourcePanelExtra, boolean coocaaSources, String inputAction, List<String> inputSources,
                    String inputUriScheme, int columns, int rowsBelowDock, boolean animations, boolean advancedEffects,
                    boolean shamsiDate, String greetingName, boolean moduleCards, boolean reducedMotion, boolean bootToLiveTv, boolean openOnStartChoice, boolean dockTitle, boolean dockRow, boolean topMenu, boolean launcherSettingsButton, boolean reorderButton, boolean showNetworkPill, boolean showInputsPill, boolean iconOnlyButtons, boolean iconOnlyInputs, boolean libraryButton, boolean showLibraryPill, int wifiLabelWidth, boolean alwaysShowNames, boolean wallpaperTrueColor, boolean focusOvershoot, String vpnApp,
-                   boolean showHomeSettingsShortcut, boolean showStats, String gameDay, boolean appLibrary, boolean appLibrarySelection, boolean libraryOkOpens, int libraryRows, boolean pillLabelsOnFocus, boolean uniformTiles, int backgroundColor, int skyIntensity,
+                   boolean showHomeSettingsShortcut, boolean showStats, String gameDay, boolean appLibrary, boolean appLibrarySelection, boolean libraryOkOpens, int libraryColumns, boolean pillLabelsOnFocus, boolean uniformTiles, int backgroundColor, int skyIntensity,
                    int[] settingsKeycodes, boolean settingsKeyPanel, boolean restoreKeyServices, boolean wallpaperEnabled, File wallpaper, List<File> wallpapers,
                    int wallpaperRotationMinutes, int wallpaperDim, int dockOpacity, String wallpaperOrder, boolean overlayApplied,
                    Festival festival, int[] inputKeycodes, List<String> appKeys, String stockHomeRedirect,
@@ -359,7 +359,7 @@ final class Config {
         this.appLibrary = appLibrary;
         this.appLibrarySelection = appLibrarySelection;
         this.libraryOkOpens = libraryOkOpens;
-        this.libraryRows = libraryRows;
+        this.libraryColumns = libraryColumns;
         this.pillLabelsOnFocus = pillLabelsOnFocus;
         this.uniformTiles = uniformTiles;
         this.backgroundColor = backgroundColor;
@@ -493,7 +493,7 @@ final class Config {
         boolean library = res.getBoolean(R.bool.app_library);
         boolean librarySelection = res.getBoolean(R.bool.app_library_selection);
         boolean libraryOkOpens = res.getBoolean(R.bool.library_ok_opens);
-        int libraryRows = res.getInteger(R.integer.library_rows);
+        int libraryColumns = res.getInteger(R.integer.library_columns);
         boolean pillLabelsOnFocus = res.getBoolean(R.bool.pill_labels_on_focus);
         boolean uniformTiles = res.getBoolean(R.bool.uniform_tiles);
         int background = 0xFF000000;
@@ -608,7 +608,7 @@ final class Config {
             library = bool(json, "app_library", library);
             librarySelection = bool(json, "app_library_selection", librarySelection);
             libraryOkOpens = bool(json, "library_ok_opens", libraryOkOpens);
-            libraryRows = integer(json, "library_rows", libraryRows, 1, 3);
+            libraryColumns = integer(json, "library_columns", libraryColumns, 0, 8);
             pillLabelsOnFocus = bool(json, "pill_labels_on_focus", pillLabelsOnFocus);
             uniformTiles = bool(json, "uniform_tiles", uniformTiles);
             background = color(json, "background_color", background);
@@ -711,7 +711,7 @@ final class Config {
                 Math.max(0, rowsBelow), animations, advancedEffects, shamsi, greetingName, moduleCards, reducedMotion, bootToLiveTv,
                 openOnStartChoice, dockTitle, dockRow, topMenu, launcherSettingsButton, reorderButton, showNetworkPill, showInputsPill,
                 iconOnlyButtons, iconOnlyInputs, libraryButton, showLibraryPill, wifiLabelWidth, alwaysShowNames, wallpaperTrueColor, focusOvershoot,
-                vpn, homeSettings, showStats, gameDay, library, librarySelection, libraryOkOpens, Math.max(1, Math.min(3, libraryRows)), pillLabelsOnFocus, uniformTiles, background,
+                vpn, homeSettings, showStats, gameDay, library, librarySelection, libraryOkOpens, libraryColumns, pillLabelsOnFocus, uniformTiles, background,
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, restoreKeyServices, wallpaperEnabled, wallpaper,
                 wallpapers, rotationMinutes, wallpaperDim, dockOpacity, wallpaperOrder, applied, festival, inputKeycodes, appKeys, stockHomeRedirect,
                 json == null ? Collections.emptyList() : raceCalendar(json), cinematic, ambientGlow, appGlow, fadeRows,

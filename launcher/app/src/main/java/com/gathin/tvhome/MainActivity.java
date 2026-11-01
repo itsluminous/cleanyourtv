@@ -187,7 +187,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView heroSynopsis;
     private LinearLayout heroChips;
     private long feedArtId = -1;
-    private final Runnable carouselStart = this::showCarousel;
     private final Runnable carouselAdvance = () -> {
         if (!carouselShowing || feedItems.isEmpty()) return;
         feedIndex = (feedIndex + 1) % feedItems.size();
@@ -701,7 +700,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         });
         if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockGlass, cfg.dockEvenPadding, cfg.dockBand,
-                singleRow, cfg.dockBandAll));
+                singleRow, cfg.dockBandAll).bottomDp(AppAdapter.dockBottomDp(cfg.rowGap)));
         if (cfg.fadeRows) TopFade.attach(grid, 48 * density);
         // Reduced motion: the tiles are simply there, with no entrance (reloadApps skips it there too).
         if (animations && !reducedMotion) {
@@ -722,9 +721,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             int h = b - t;
             // Item height follows the tile size, which follows the columns and the rows that must fit (AppAdapter.tileWidthPx).
             int inner = (r - l) - grid.getPaddingLeft() - grid.getPaddingRight();
-            int tileW = AppAdapter.tileWidthPx(inner, h, COLUMNS, rowsBelowDock, cfg.dockTitle, cfg.dockRow, density);
-            int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(tileW), density);
-            int dockRow = itemH + (int) (AppAdapter.DOCK_EXTRA_DP * density);   // item height plus DockDecoration offsets
+            int tileW = AppAdapter.tileWidthPx(inner, h, COLUMNS, rowsBelowDock, cfg.dockTitle, cfg.dockRow, density, cfg.rowGap);
+            int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(tileW), true, density, cfg.rowGap);
+            int dockRow = itemH + (int) (AppAdapter.dockExtraDp(cfg.rowGap) * density);   // item height plus DockDecoration offsets
             int gridRows = itemH * rowsBelowDock;
             // Keep the hero below the header when the library is enabled on a short screen,
             // even when the theme requests an extra visible row below the dock.
@@ -1128,7 +1127,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         resumed = true;
         if (heroFeed != null) {
             heroFeed.start();
-            scheduleCarousel();
+            // The carousel owns the shelf while the companion has items: re-arm its timer, or put it up now.
+            if (carouselShowing) showCarouselItem(false);
+            else if (heroOwned() && heroShown && shelfTileFocused()) showCarousel(false);
         }
         // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(LocalDate.now())) {
@@ -1342,11 +1343,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     public void onUserInteraction() {
         super.onUserInteraction();
         restartIdleClock();
-        if (heroFeedOn) {
-            // Any key brings the app's name back; the carousel returns once the dock has been still for 1.5 s.
-            if (carouselShowing && !hero.hasFocus()) exitCarousel();
-            scheduleCarousel();
-        }
     }
 
     private void restartIdleClock() {
@@ -1359,7 +1355,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         super.onPause();
         resumed = false;
         if (heroFeed != null) {
-            exitCarousel();
+            // The carousel stays on the shelf for the return to Home; only its advance timer and the reader stop.
+            handler.removeCallbacks(carouselAdvance);
             heroFeed.stop();
         }
         // No UP reaches a paused Home, so a vendor-key hold it saw go down would still open its app later.
@@ -1968,8 +1965,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void showHero(int position, float dockTopInRoot) {
         lastDockTop = dockTopInRoot;
-        if (carouselShowing) return;   // the carousel owns the shelf until a key brings the name back
-        if (heroFeedOn) scheduleCarousel();
+        if (heroOwned()) {
+            // hero_feed with items: the carousel owns the shelf; the focused app's name is under its tile instead.
+            showOwnedShelf(position);
+            return;
+        }
+        if (carouselShowing) return;   // the companion's items just went away: exitCarousel is on its way
         String label = adapter.labelAt(position);
         int color = adapter.ambientColorAt(position);
         float y = dockTopInRoot - 14 * density - 26 * density - hero.getHeight();
@@ -2063,16 +2064,27 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         StateListDrawable bg = new StateListDrawable();
         bg.addState(new int[]{android.R.attr.state_focused}, focus);
         hero.setBackground(bg);
+        // Focus can also reach the shelf from a tile's Up: the glass has no tile to sit on then.
+        hero.setOnFocusChangeListener((v, has) -> {
+            if (has) hideGlass();
+        });
         heroFeed = new HeroFeed(this, handler, items -> {
             feedItems = items;
             if (items.isEmpty()) {
+                // Nothing to show: the shelf goes back to naming the focused app, as without hero_feed.
                 exitCarousel();
                 return;
             }
             feedIndex = Math.min(feedIndex, items.size() - 1);
+            applyTileNames(true);
             if (carouselShowing) showCarouselItem(false);
-            else scheduleCarousel();
+            else if (heroShown && shelfTileFocused()) showCarousel(true);
         });
+    }
+
+    /** hero_feed with items: the carousel owns the top shelf, whatever tile is focused. */
+    private boolean heroOwned() {
+        return heroFeedOn && !feedItems.isEmpty();
     }
 
     private boolean dockTileFocused() {
@@ -2080,17 +2092,86 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         return pos >= 0 && dockRow && (singleRow || pos < COLUMNS);
     }
 
-    /** Starts the 1.5 s wait for the carousel, when the dock is focused and nothing else is going on. */
-    private void scheduleCarousel() {
-        handler.removeCallbacks(carouselStart);
-        if (!heroFeedOn || !resumed || carouselShowing || feedItems.isEmpty() || reordering || openPopup != null
-                || cardPrompt != null || appLibrary != null || !dockTileFocused()) return;
-        handler.postDelayed(carouselStart, 1500);
+    /** A tile whose row the shelf belongs to: the dock, or with shelf_every_row any row. */
+    private boolean shelfTileFocused() {
+        int pos = focusedTilePosition();
+        return pos >= 0 && dockRow && (singleRow || pos < COLUMNS || shelfEveryRow);
     }
 
-    private void showCarousel() {
-        if (!resumed || carouselShowing || feedItems.isEmpty() || !heroShown || !dockTileFocused() || Float.isNaN(lastDockTop)) return;
+    /**
+     * The names under the tiles while the carousel owns the shelf (there is no shelf name to tell the focused app).
+     * Changes the bound holders in place: a rebind would move the focus.
+     */
+    private void applyTileNames(boolean on) {
+        if (!adapter.setNamesUnderTiles(on)) return;
+        for (int i = 0; i < grid.getChildCount(); i++) {
+            RecyclerView.ViewHolder vh = grid.getChildViewHolder(grid.getChildAt(i));
+            if (vh instanceof AppAdapter.Holder) adapter.refreshName((AppAdapter.Holder) vh, vh.getBindingAdapterPosition());
+        }
+    }
+
+    /**
+     * The shelf for a focused tile while the carousel owns it: the carousel goes up if it is not up yet (and stays
+     * where it is otherwise), the cinematic artwork of the app stays out, and only the glow takes the app's colour.
+     */
+    private void showOwnedShelf(int position) {
+        int color = adapter.ambientColorAt(position);
+        boolean first = !heroShown;
+        heroShown = true;
+        if (!carouselShowing) {
+            showCarousel(false);
+        } else {
+            placeCarouselShelf();
+            // A rebuild (refreshTiles) or hideHero took the shelf to 0 while the carousel was up: bring it back.
+            if (hero.getAlpha() < 1f) {
+                hero.animate().cancel();
+                if (animations && !reducedMotion) hero.animate().alpha(1f).translationX(0f).setDuration(260).start();
+                else {
+                    hero.setTranslationX(0f);
+                    hero.setAlpha(1f);
+                }
+            }
+            if (heroFeedArt.getAlpha() == 0f && heroFeedArt.getDrawable() != null) heroFeedArt.animate().alpha(1f).setDuration(260).start();
+        }
+        if (cinematic && heroArt.getAlpha() > 0f) {
+            heroArt.animate().cancel();
+            if (animations && !reducedMotion) heroArt.animate().alpha(0f).setDuration(300).start();
+            else heroArt.setAlpha(0f);
+            heroArtKey = null;   // so the app's artwork comes back when the shelf returns to its name
+        }
+        if (!ambientGlow) return;
+        if (!animations || reducedMotion) {
+            ambient.animate().cancel();
+            setAmbient(color);
+            ambient.setAlpha(1f);
+        } else if (first) {
+            stopAmbientAnimation();
+            ambient.animate().cancel();
+            setAmbient(color);
+            ambient.animate().alpha(1f).setDuration(600).start();
+        } else if (color != ambientColor) {
+            if (advancedEffects) {
+                transitionAmbient(color);
+            } else if (glowSnap) {
+                ambient.animate().cancel();
+                setAmbient(color);
+                ambient.setAlpha(1f);
+            } else {
+                ambient.animate().alpha(0.35f).setDuration(200).withEndAction(() -> {
+                    setAmbient(color);
+                    ambient.animate().alpha(1f).setDuration(500).start();
+                }).start();
+            }
+        } else if (ambient.getAlpha() < 1f) {
+            ambient.animate().alpha(1f).setDuration(600).start();
+        }
+    }
+
+    /** Puts the carousel on the shelf, in place of the app's name; animate swaps the name out, false fills in place. */
+    private void showCarousel(boolean animate) {
+        if (!resumed || carouselShowing || feedItems.isEmpty() || !heroShown || !shelfTileFocused() || Float.isNaN(lastDockTop)) return;
         carouselShowing = true;
+        applyTileNames(true);
         hero.setFocusable(true);
         int pad = (int) (10 * density);
         hero.setPadding(pad, pad, pad, pad);
@@ -2107,7 +2188,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroChips.setVisibility(View.VISIBLE);
         heroDots.setVisibility(View.VISIBLE);
         heroFeedArt.setVisibility(View.VISIBLE);
-        showCarouselItem(true);
+        showCarouselItem(animate);
     }
 
     /** Fills the shelf with the current item and fades its backdrop in; (re)starts the advance timer. */
@@ -2205,10 +2286,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         hero.setY(Math.max(y, minTop));
     }
 
-    /** The shelf back to the focused app's name; the focus back on its tile if the carousel had it. */
+    /**
+     * The shelf back to the focused app's name (the companion has no items, or Home is going away); the focus back
+     * on its tile if the carousel had it, and the names under the tiles off again.
+     */
     private void exitCarousel() {
-        handler.removeCallbacks(carouselStart);
         handler.removeCallbacks(carouselAdvance);
+        applyTileNames(false);
         if (!carouselShowing) return;
         carouselShowing = false;
         boolean hadFocus = hero.hasFocus();
@@ -2255,7 +2339,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /**
      * Keys for the carousel. With the shelf focused: Left/Right move items, OK opens the title in the companion app,
-     * Down and Back return to the dock, Up goes on to the top bar. From a dock tile, Up focuses the showing carousel.
+     * Down and Back return to the tile, Up goes on to the top bar; the carousel stays on the shelf throughout. From a
+     * dock tile, Up focuses the carousel.
      */
     private boolean handleCarouselKey(KeyEvent event) {
         if (!carouselShowing || reordering || openPopup != null || cardPrompt != null) return false;
@@ -2274,13 +2359,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 case KeyEvent.KEYCODE_DPAD_DOWN:
                 case KeyEvent.KEYCODE_BACK:
                 case KeyEvent.KEYCODE_ESCAPE:
-                    if (down) exitCarousel();
+                    if (down) focusTile(lastFocused);
                     return true;
                 case KeyEvent.KEYCODE_DPAD_UP:
-                    if (down) {
-                        exitCarousel();
-                        firstTopButton().requestFocus();
-                    }
+                    if (down) firstTopButton().requestFocus();
                     return true;
                 case KeyEvent.KEYCODE_DPAD_CENTER:
                 case KeyEvent.KEYCODE_ENTER:

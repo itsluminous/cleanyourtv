@@ -124,7 +124,34 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     /** The same for either layout: the plain grid (dock_row false) uses the compact spacing. */
     static int itemHeightPx(int tileHeightPx, boolean dockRow, float density) {
-        return tileHeightPx + Math.round((dockRow ? ITEM_EXTRA_DP : COMPACT_ITEM_EXTRA_DP) * density);
+        return itemHeightPx(tileHeightPx, dockRow, density, (int) ITEM_EXTRA_DP);
+    }
+
+    /** The same with row_gap: the dock_row layout's tile-to-next-tile distance in dp (ITEM_EXTRA_DP by default). */
+    static int itemHeightPx(int tileHeightPx, boolean dockRow, float density, int rowGapDp) {
+        return tileHeightPx + Math.round((dockRow ? rowGapDp : COMPACT_ITEM_EXTRA_DP) * density);
+    }
+
+    /** The 7dp gap and the 22dp name label under a tile: the part of row_gap the item's padding cannot give up. */
+    static final int MIN_ROW_GAP_DP = 7 + 22;
+
+    /** row_gap: the item's padding above its tile; the rest of the gap less the name goes below (itemPadBottomDp). */
+    static int itemPadTopDp(int rowGapDp) {
+        return Math.max(0, rowGapDp - MIN_ROW_GAP_DP) / 2;
+    }
+
+    static int itemPadBottomDp(int rowGapDp) {
+        return Math.max(0, rowGapDp - MIN_ROW_GAP_DP) - itemPadTopDp(rowGapDp);
+    }
+
+    /** DockDecoration's offset below the dock row: 12dp at the layout's own row_gap, in proportion otherwise. */
+    static int dockBottomDp(int rowGapDp) {
+        return Math.round(12f * rowGapDp / ITEM_EXTRA_DP);
+    }
+
+    /** DockDecoration's offsets above and below the dock row for this row_gap (DOCK_EXTRA_DP at the default). */
+    static float dockExtraDp(int rowGapDp) {
+        return 6 + dockBottomDp(rowGapDp);
     }
 
     /**
@@ -155,12 +182,18 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
      */
     static int tileWidthPx(int innerWidthPx, int gridHeightPx, int columns, int rowsBelowDock, boolean dockTitle,
                            boolean dockRow, float density) {
+        return tileWidthPx(innerWidthPx, gridHeightPx, columns, rowsBelowDock, dockTitle, dockRow, density, (int) ITEM_EXTRA_DP);
+    }
+
+    /** The same with row_gap (the dock_row layout's tile-to-next-tile distance in dp; ITEM_EXTRA_DP by default). */
+    static int tileWidthPx(int innerWidthPx, int gridHeightPx, int columns, int rowsBelowDock, boolean dockTitle,
+                           boolean dockRow, float density, int rowGapDp) {
         int w = tileWidthPx(innerWidthPx, columns, density);
         if (gridHeightPx <= 0 || rowsBelowDock <= 0) return w;
-        float reserved = (dockRow ? DOCK_EXTRA_DP + BOTTOM_ROOM_DP + (dockTitle ? TITLE_ROOM_DP : 0)
+        float reserved = (dockRow ? dockExtraDp(rowGapDp) + BOTTOM_ROOM_DP + (dockTitle ? TITLE_ROOM_DP : 0)
                 : TOP_ROOM_DP + COMPACT_BOTTOM_ROOM_DP) * density;
         float perItem = (gridHeightPx - reserved) / (rowsBelowDock + 1);
-        float tileH = perItem - (dockRow ? ITEM_EXTRA_DP : COMPACT_ITEM_EXTRA_DP) * density;
+        float tileH = perItem - (dockRow ? rowGapDp : COMPACT_ITEM_EXTRA_DP) * density;
         int byHeight = Math.round(tileH * DESIGN_W_DP / DESIGN_H_DP);
         // Shrink at most to MIN_HEIGHT_FIT of the width-only size. Below that the tiles look lost in their wide
         // columns (2 rows under a titled dock came out at 80dp); the rows that still don't fit run off the bottom
@@ -175,6 +208,10 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final int rowsBelowDock;
     private final boolean dockTitle;
     private final boolean shelfEveryRow;
+    /** row_gap: tile bottom to the next row's tile top, dp (ITEM_EXTRA_DP is item_app.xml's own). */
+    private final int rowGapDp;
+    /** hero_feed: the carousel owns the shelf, so every tile (the dock's too) carries its name while focused. */
+    private boolean namesUnderTiles;
     /** The owner's saved order (reorder button, Order): key -> rank. Empty when there is none or it no longer applies. */
     private Map<String, Integer> savedRanks = Collections.emptyMap();
     /** Dock size recorded with the saved order (Order.docked), or -1: then dock_apps says which tiles are docked. */
@@ -240,6 +277,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         this.rowsBelowDock = cfg.rowsBelowDock;
         this.dockTitle = cfg.dockTitle;
         this.shelfEveryRow = cfg.shelfEveryRow && cfg.dockRow && !cfg.singleRow;
+        this.rowGapDp = cfg.rowGap;
         this.dockRow = cfg.dockRow;
         this.singleRow = cfg.singleRow;
         this.restNameAlpha = cfg.alwaysShowNames ? 0.75f : 0f;
@@ -417,7 +455,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         float density = parent.getResources().getDisplayMetrics().density;
         int width = parent.getWidth() > 0 ? parent.getWidth() : parent.getMeasuredWidth();
         int inner = width - parent.getPaddingLeft() - parent.getPaddingRight();
-        int w = tileWidthPx(inner, parent.getHeight(), dockSize, rowsBelowDock, dockTitle, dockRow, density), h = tileHeightPx(w);
+        int w = tileWidthPx(inner, parent.getHeight(), dockSize, rowsBelowDock, dockTitle, dockRow, density, rowGapDp), h = tileHeightPx(w);
         View card = v.findViewById(R.id.card);
         ViewGroup.LayoutParams cardLp = card.getLayoutParams();
         cardLp.width = w;
@@ -432,6 +470,10 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             nameLp.height = Math.round(20 * density);
             int pad = Math.round(4 * density);
             v.setPadding(v.getPaddingLeft(), pad, v.getPaddingRight(), pad);
+        } else if (rowGapDp != (int) ITEM_EXTRA_DP) {
+            // row_gap: the name keeps its 7dp gap and 22dp label; the item's 8dp paddings take up the difference.
+            v.setPadding(v.getPaddingLeft(), Math.round(itemPadTopDp(rowGapDp) * density), v.getPaddingRight(),
+                    Math.round(itemPadBottomDp(rowGapDp) * density));
         }
         name.setLayoutParams(nameLp);
         // A sideways row would stretch a match_parent item across the whole screen: give it a grid column's width.
@@ -480,8 +522,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         // The dock has no labels, unless always_show_names asks for them (DockDecoration then makes room in the band).
         // In a single row every tile is the dock's kind: the big title above names it.
         boolean dockKind = DockSlots.inDockRow(dockRow, singleRow, position, dockSize);
-        // shelf_every_row: the shelf names every focused tile, so no row carries names.
-        h.name.setVisibility((dockKind || shelfEveryRow) && restNameAlpha == 0f ? View.INVISIBLE : View.VISIBLE);
+        h.name.setVisibility(nameVisibility(dockKind));
         h.inDock = dockKind;
         boolean focused = h.card.isFocused();   // a rebind after reload() can hit the focused tile
         h.name.setAlpha(focused ? 1f : restNameAlpha);
@@ -676,6 +717,29 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (position < 0 || position >= items.size()) return null;
         Entry e = items.get(position);
         return e.banner != null ? e.banner : e.icon;
+    }
+
+    /**
+     * Whether a tile's name label is in the layout. The dock has no labels, unless always_show_names asks for them
+     * (DockDecoration then makes room in the band); with shelf_every_row the shelf names every focused tile, so no
+     * row carries names. In a single row every tile is the dock's kind: the big title above names it. While the
+     * hero_feed carousel owns the shelf (namesUnderTiles) every tile keeps its label, shown on focus.
+     */
+    private int nameVisibility(boolean dockKind) {
+        return (dockKind || shelfEveryRow) && restNameAlpha == 0f && !namesUnderTiles ? View.INVISIBLE : View.VISIBLE;
+    }
+
+    /** hero_feed: names under every focused tile while the carousel has the shelf. True when the setting changed. */
+    boolean setNamesUnderTiles(boolean on) {
+        if (namesUnderTiles == on) return false;
+        namesUnderTiles = on;
+        return true;
+    }
+
+    /** Re-applies the name label's visibility to a bound holder in place (setNamesUnderTiles changed it). */
+    void refreshName(Holder h, int position) {
+        if (position < 0 || position >= items.size() || items.get(position).kind == Entry.EMPTY) return;
+        h.name.setVisibility(nameVisibility(DockSlots.inDockRow(dockRow, singleRow, position, dockSize)));
     }
 
     float focusScale() {

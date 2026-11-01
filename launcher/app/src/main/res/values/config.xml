@@ -435,14 +435,21 @@
          menu items (Add to dock, Edit dock) are left out, since the first row is only a row. Off by default; a theme
          can set "shelf_every_row": true. -->
     <bool name="shelf_every_row">false</bool>
-    <!-- hero_feed: while the dock row is at rest (no key for 1.5 s), the top shelf cycles through the Trakt companion
-         app's items (package com.kupraki.traktshelf, authority com.kupraki.traktshelf.hero): backdrop faded into the wallpaper,
-         title, year, a short synopsis and IMDb / RT / Trakt chips, one dot per item, moving on every
-         hero_feed_interval seconds (3 to 120). Any key brings the app-name shelf back; Up from the dock focuses the
-         carousel, Left/Right move it, OK opens the title in the companion. Without the companion the shelf is as
-         before. Needs dock_row. Off by default; a theme can set "hero_feed": true. -->
+    <!-- hero_feed: the top shelf is a carousel of the Trakt companion app's titles (addons/traktshelf, read through its
+         content provider): backdrop faded into the wallpaper, title, year, synopsis, IMDb / RT / Trakt chips and
+         dots, one item every hero_feed_interval seconds (3 to 120). While that app has items the carousel owns the
+         shelf: moving between tiles leaves it alone and the focused app's name shows under its tile instead (with
+         shelf_every_row the rows still scroll to the dock's line). Up from the dock focuses the carousel, Left/Right
+         move it, OK opens the title in that app, Down or Back returns to the tile. Without the app, or with nothing
+         in it, the shelf is as before. Needs dock_row. Off by default; a theme can set "hero_feed": true. -->
     <bool name="hero_feed">false</bool>
     <integer name="hero_feed_interval">8</integer>
+    <!-- row_gap: the space from the bottom of a tile to the top of the tile in the next row, in dp, in the dock_row
+         layout (29 to 90; 45 is the layout's own spacing: 8dp above and below each item, a 7dp gap and the 22dp name
+         under the tile). The name keeps its 29dp and the item's padding takes the rest; the dock's 12dp offset
+         below its row shrinks in the same proportion, so rows_below_dock still fits. A theme can set "row_gap": 32
+         for rows about 30% closer. -->
+    <integer name="row_gap">45</integer>
 
     <!-- Apps pre-seeded into the App library's "added" set at startup (config.xml library_apps, or a theme's
          config.json). They show on Home as if the owner had added them in the App library UI, and stay

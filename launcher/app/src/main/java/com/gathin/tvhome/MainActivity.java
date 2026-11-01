@@ -353,6 +353,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private AppLibraryDialog appLibrary;
     private boolean appLibrarySelection;
     private boolean libraryOkOpens;
+    private int libraryRows = 1;
     private boolean libraryFocusPending;
     private RecyclerView.OnScrollListener pendingFocusScroll;
 
@@ -459,6 +460,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         homeHoldAppKeys = RemoteKeys.parseHoldAppKeys(cfg.appKeys);
         appLibrarySelection = cfg.appLibrarySelection;
         libraryOkOpens = cfg.libraryOkOpens;
+        libraryRows = cfg.libraryRows;
         // restore_key_services: after a force stop, put back the remote's accessibility helpers that Android took
         // off the list (needs WRITE_SECURE_SETTINGS, granted by build-and-install with RESTORE_KEY_SERVICES=1).
         if (cfg.restoreKeyServices) ServiceRepair.restore(this);
@@ -915,6 +917,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         .scaleX(focused ? 1.04f : 1f).scaleY(focused ? 1.04f : 1f)
                         .setDuration(reducedMotion ? Motion.REDUCED_MS : 160).start());
             }
+        }
+        // After the scale animation above, so this listener chains it instead of being replaced by it.
+        pillLabelsOnFocus = cfg.pillLabelsOnFocus;
+        if (cfg.pillLabelsOnFocus) {
+            // Each icon-only pill grows to its name while focused and shrinks back when focus leaves. The Library
+            // button is icon-only from its layout, so it joins in too.
+            if (cfg.iconOnlyInputs) labelOnFocus((TextView) btnInputs);
+            if (iconOnlyButtons) {
+                if (cfg.wifiLabelWidth <= 0) labelOnFocus(btnWifi);
+                labelOnFocus((TextView) btnSettings);
+            }
+            labelOnFocus((TextView) btnLibraryTop);
         }
         if (festive) applyFestiveSkin((TextView) btnInputs, (TextView) btnSettings);
 
@@ -1757,7 +1771,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         libraryFocusPending = false;
         libraryFromTopBar = false;
         libraryFromVpnPill = false;
-        appLibrary = new AppLibraryDialog(this, animations, reducedMotion, appLibrarySelection, libraryOkOpens, adapter::containsPackage, () -> reloadApps(false), () -> {
+        appLibrary = new AppLibraryDialog(this, animations, reducedMotion, appLibrarySelection, libraryOkOpens, libraryRows, adapter::containsPackage, () -> reloadApps(false), () -> {
             appLibrary = null;
             openPopup = null;
             if (libraryFromTopBar) {
@@ -2990,7 +3004,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (wifiIconOnly) {
             btnWifi.setContentDescription(btnWifi.getText());
-            btnWifi.setText(null);
+            // With pill_labels_on_focus the focused pill is showing its name: leave the fresh one on screen.
+            if (!(pillLabelsOnFocus && btnWifi.hasFocus())) btnWifi.setText(null);
         }
         if (festive && lamp != null) {
             if (online && flame == 0) flame = 3;   // online some other way (cellular, USB tethering)
@@ -3019,6 +3034,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean launcherSettingsButton;
     /** icon_only_buttons without wifi_label_width: the Wi-Fi pill shows no network name. */
     private boolean wifiIconOnly;
+    private boolean pillLabelsOnFocus;
     /** config.xml wifi_status_color: the Wi-Fi icon's green while online and its usual pill colours; null while off. */
     private ColorStateList wifiOnlineTint, wifiPlainTint;
     /** wifi_status_warnings (with wifi_status_color): orange without internet, red offline; null while off. */
@@ -3039,6 +3055,37 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         pill.setPaddingRelative(pad, 0, pad, 0);
         pill.setCompoundDrawablePadding(0);
         pill.getLayoutParams().width = Math.round(42 * density);
+    }
+
+    /**
+     * pill_labels_on_focus: an icon-only pill shows its name (kept in its contentDescription by makeIconOnly, and
+     * by updateWifiLabel for the network pill) while it has focus, with the padding of a labelled pill, and goes
+     * back to the 42dp circle when focus leaves. The layout pass is the TextView's own; nothing is animated, so
+     * reduced motion needs no case here.
+     */
+    private void labelOnFocus(TextView pill) {
+        if (pill == null) return;
+        View.OnFocusChangeListener previous = pill.getOnFocusChangeListener();
+        pill.setOnFocusChangeListener((v, focused) -> {
+            if (previous != null) previous.onFocusChange(v, focused);
+            ViewGroup.LayoutParams lp = pill.getLayoutParams();
+            if (focused) {
+                CharSequence name = pill.getContentDescription();
+                if (TextUtils.isEmpty(name)) return;
+                pill.setText(name);
+                int side = Math.round(16 * density);
+                pill.setPaddingRelative(side, 0, side, 0);
+                pill.setCompoundDrawablePadding(Math.round(8 * density));
+                lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            } else {
+                pill.setText(null);
+                int pad = Math.round(10 * density);
+                pill.setPaddingRelative(pad, 0, pad, 0);
+                pill.setCompoundDrawablePadding(0);
+                lp.width = Math.round(42 * density);
+            }
+            pill.setLayoutParams(lp);
+        });
     }
 
     // ---- festive skin ------------------------------------------------------------------------------

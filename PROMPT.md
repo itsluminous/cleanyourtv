@@ -16,7 +16,7 @@ adapter on that port can drop the same way, so plan to do the whole session in o
 ---
 
 I want to debloat my Android TV and replace its launcher with a clean Apple TV style home screen.
-My TV model is: <MODEL NAME HERE>. Work on the real device, step by step, and verify everything you
+My TV model is: MiTV-MOOQ1. Work on the real device, step by step, and verify everything you
 do with screenshots pulled from the TV. Ask me before anything that depends on my preferences.
 Where these steps name a file under `tools/`, `docs/` or `examples/` that is not in your working
 folder, you are running without this repo: clone it first with
@@ -190,7 +190,7 @@ Launcher
 - If you write the launcher yourself, make its theme explicitly opaque (`windowIsTranslucent`,
   `windowIsFloating` and `windowSwipeToDismiss` false): on some firmware `Theme.DeviceDefault` comes out
   translucent, the TV app keeps running under Home, and after an HDMI input the picture stays on screen.
-- Ask how many dock slots I want (4, 5, 6 or 7), which apps, and their order; keep four if I have no
+- Ask how many dock slots I want (4, 5, 6 or 7), which apps, and their order; keep five if I have no
   preference. The reference launcher already supports this: use `columns` and `dock_apps` in
   `launcher/app/src/main/res/values/config.xml` or a theme's `config.json`, without adding a new layout.
 - Design, Apple TV 4K style: pitch black background; a dock row at the bottom of the screen inside a
@@ -205,6 +205,10 @@ Launcher
 - Make D-pad navigation deterministic: Up/Down move exactly one row, Up from the dock goes to the top
   bar, the ends of the top bar don't fall through to tiles. Remember the last focused tile.
 - Keep it light: the TV has about 1 GB of RAM. No blur, no video, no network polling.
+- I currently use LtvLauncher and I love its categorization option which I have done to my liking and created Media, Games, Others, Inbuilt categories. I want that in the launcher you build, beyond what is visible in first screen, I should be able to scroll down to see similar rows.
+- I sync my watchlist and watch history to Trakt.tv. It will be awesome if my recommendations and watchlist on home screen are powered by those. Also show IMDB and rotten tomatoes ratings and when I open any movie or show, it should show synopsis and cast and comments similar to Trakt. I should be able to add or update entries in Trakt from launcher itself (probably take some hints from https://github.com/trakt/showly as I use this app on my Android phone). The sync etc should not be UI blocking.
+- I almost never use the official media streaming apps, and use alternates like Stremio, Cloudstream, NetMirror etc and for sports I use Showly. So when I click on play button against a movie, ask me to open NetMirror or Stremio or CloudStream (of course only if they are installed). Similarly, for youtube I switch between TizenTube and SmartTube - for songs, trailers etc I prefer TizenTube and for regular videos I prefer SmartTube because I can set custom playback speed for each channel.
+- Before you actually start building the launcher, show me a mock sketch for what it will look like so that I can suggest further changes.
 
 Verify
 - After each change, inject remote key presses over ADB, take a screenshot from the TV and look at it:

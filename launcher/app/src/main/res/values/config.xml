@@ -429,6 +429,12 @@
          opens a list in the same panel, Back returns. With launcher_settings_button the Settings pill keeps its gear
          and its "Settings" label. Off by default (the full-screen page); a theme can set "settings_panel": true. -->
     <bool name="settings_panel">false</bool>
+    <!-- Every row of tiles behaves like the dock row: focusing a tile in a lower row scrolls that row up to the dock's
+         place under the top shelf, the rows above slide out of view, and the shelf names the focused app in large type
+         with its colour, as it does for the dock. Tiles then carry no name of their own. Needs dock_row; the dock
+         menu items (Add to dock, Edit dock) are left out, since the first row is only a row. Off by default; a theme
+         can set "shelf_every_row": true. -->
+    <bool name="shelf_every_row">false</bool>
 
     <!-- Apps pre-seeded into the App library's "added" set at startup (config.xml library_apps, or a theme's
          config.json). They show on Home as if the owner had added them in the App library UI, and stay

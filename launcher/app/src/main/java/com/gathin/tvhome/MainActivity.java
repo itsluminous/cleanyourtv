@@ -474,6 +474,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         reducedMotion = cfg.reducedMotion;
         dockRow = cfg.dockRow;
         singleRow = cfg.singleRow;
+        shelfEveryRow = cfg.shelfEveryRow && dockRow && !singleRow;
         focusOvershoot = cfg.focusOvershoot;
         festival = cfg.festival;
         festive = festival.active(LocalDate.now());
@@ -714,8 +715,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // A single row never shows the names under its tiles (the title above the row names the app), so the
             // 7dp gap and 22dp label item_app.xml keeps for them would only lift the row: sit it that much lower.
             if (singleRow && !cfg.alwaysShowNames) want += (int) (29 * density);
-            if (grid.getPaddingTop() != want) {
-                grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), grid.getPaddingBottom());
+            // shelf_every_row: room under the last row, so every row can scroll up to the padding line.
+            int wantBottom = shelfEveryRow ? Math.max(grid.getPaddingBottom(), h - want - dockRow) : grid.getPaddingBottom();
+            if (shelfEveryRow) {
+                // The rows that scroll up past the padding line would run on under the shelf's name (clipToPadding is
+                // off so a focused tile can grow past its row): cut them 16dp above the line, which keeps the focused
+                // row's own growth and loses the row above.
+                int clipTop = Math.max(0, want - (int) (16 * density));
+                Rect clip = grid.getClipBounds();
+                if (clip == null || clip.top != clipTop || clip.right != r - l || clip.bottom != h) {
+                    grid.setClipBounds(new Rect(0, clipTop, r - l, h));
+                }
+            }
+            if (grid.getPaddingTop() != want || grid.getPaddingBottom() != wantBottom) {
+                grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), wantBottom);
                 // A vertical grid parks the dock on the new padding line by scrolling (onTileFocused); a sideways
                 // row cannot scroll vertically, and the layout request made from inside this layout pass is
                 // dropped, so lay the row out again on the next frame. The glass and the title were placed for the
@@ -1842,7 +1855,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         glassTargetY = y;
         // Cinematic shelf: the highlight glows in the dock app's colour, plain white in the grid (and on the dock with
         // cinematic_white_focus). app_glow: every tile. In a single row every tile is the dock's kind.
-        boolean coloured = (appGlow || cinematic && !cinematicWhiteFocus && (singleRow || position < COLUMNS)) && !festive;
+        boolean coloured = (appGlow || cinematic && !cinematicWhiteFocus && (singleRow || position < COLUMNS || shelfEveryRow)) && !festive;
         int accent = coloured ? adapter.ambientColorAt(position) : 0;
         if ((cinematic || appGlow) && !festive && accent != glassAccent) {
             glassAccent = accent;
@@ -1866,8 +1879,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             springY.animateToFinalPosition(y - glassScrollShift);
         }
         View item = (View) card.getParent();
-        if (dockRow && (singleRow || position < COLUMNS)) {
-            // Dock: park it at the bottom of the screen and show the top shelf for this app. In a single row
+        if (dockRow && (singleRow || position < COLUMNS || shelfEveryRow)) {
+            // Dock (or, with shelf_every_row, any row): park it at the bottom of the screen and show the top shelf for
+            // this app. In a single row
             // every tile is in the dock's row, which never scrolls vertically.
             int decoratedTop = item.getTop() - (int) (6 * density);
             int dy = decoratedTop - grid.getPaddingTop();
@@ -2086,6 +2100,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void updateHeroDots(int position) {
         if (!heroDotsShown) return;
         int count = Math.min(adapter.dockFilled(), COLUMNS);
+        if (shelfEveryRow) {
+            // One dot per app in the focused row: the last row may be short.
+            int rowStart = position - position % COLUMNS;
+            count = Math.min(COLUMNS, adapter.getItemCount() - rowStart);
+        }
         heroDots.setVisibility(count > 1 ? View.VISIBLE : View.INVISIBLE);
         if (heroDots.getChildCount() != count) {
             heroDots.removeAllViews();
@@ -2101,7 +2120,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         for (int i = 0; i < count; i++) {
             View dot = heroDots.getChildAt(rtlAppGrid ? count - 1 - i : i);
-            boolean on = i == position;
+            boolean on = i == (shelfEveryRow ? position % COLUMNS : position);
             ((GradientDrawable) dot.getBackground()).setColor(on ? 0xFFFFFFFF : 0x4DFFFFFF);
             ViewGroup.LayoutParams lp = dot.getLayoutParams();
             int w = (int) ((on ? 20 : 6) * density);
@@ -3043,6 +3062,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** icon_only_buttons without wifi_label_width: the Wi-Fi pill shows no network name. */
     private boolean wifiIconOnly;
     private boolean pillLabelsOnFocus;
+    /** shelf_every_row, with dock_row and not single_row: every row scrolls to the dock's place and takes the shelf. */
+    private boolean shelfEveryRow;
     /** config.xml wifi_status_color: the Wi-Fi icon's green while online and its usual pill colours; null while off. */
     private ColorStateList wifiOnlineTint, wifiPlainTint;
     /** wifi_status_warnings (with wifi_status_color): orange without internet, red offline; null while off. */
@@ -3755,7 +3776,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             });
         }
         if (moduleCards) addSettingsMenuRow(rows, popup, R.string.module_cards, this::showModuleCards);
-        if (dockRow) addSettingsMenuRow(rows, popup, R.string.dock_edit, this::startDockEdit);
+        if (dockRow && !shelfEveryRow) addSettingsMenuRow(rows, popup, R.string.dock_edit, this::startDockEdit);
         addSettingsMenuRow(rows, popup, R.string.reorder, this::toggleReorder);
         // A launcher may not restart the TV itself; the Home key helper can open the system power menu instead.
         if (HomeKeyService.canOpenPowerMenu()) addSettingsMenuRow(rows, popup, R.string.power_menu, HomeKeyService::openPowerMenu);
@@ -3871,7 +3892,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
         PopupWindow popup = glassPopup(panel, (int) (200 * density));
-        if (dockRow && position < adapter.movableCount()) {
+        if (dockRow && !shelfEveryRow && position < adapter.movableCount()) {
             boolean inDock = position < COLUMNS;
             addSettingsMenuRow(rows, popup, inDock ? R.string.tile_replace_in_dock : R.string.tile_add_to_dock,
                     () -> startDockEditFor(key, inDock));

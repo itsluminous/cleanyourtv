@@ -30,6 +30,18 @@
         android:layout_height="match_parent"
         android:alpha="0" />
 
+    <!-- hero_feed: the carousel item's backdrop, top right, its left and bottom already faded to transparent
+         (HeroFeed decodes it so) so it melts into the wallpaper. Hidden unless the switch is on and an item shows. -->
+    <ImageView
+        android:id="@+id/heroFeedArt"
+        android:layout_width="620dp"
+        android:layout_height="349dp"
+        android:layout_gravity="top|end"
+        android:scaleType="fitXY"
+        android:alpha="0"
+        android:visibility="gone"
+        android:importantForAccessibility="no" />
+
     <!-- Race-weekend panel (a theme's race_calendar, see RaceWeekend): in the free space under the clock,
          shown only from shortly before a weekend's first session until the race is over. Updated once a
          minute with the clock, never animated. -->
@@ -144,6 +156,30 @@
             android:textColor="#B3FFFFFF"
             android:textSize="15sp"
             android:fontFamily="@string/font_light"
+            android:visibility="gone" />
+
+        <!-- hero_feed only: the carousel item's synopsis and its rating chips. -->
+        <TextView
+            android:id="@+id/heroSynopsis"
+            android:layout_width="440dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="8dp"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:textColor="#D1FFFFFF"
+            android:textSize="13sp"
+            android:lineSpacingMultiplier="1.2"
+            android:fontFamily="@string/font_light"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/heroChips"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal"
             android:visibility="gone" />
 
         <LinearLayout

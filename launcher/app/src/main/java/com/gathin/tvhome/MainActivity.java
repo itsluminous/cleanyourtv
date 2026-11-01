@@ -29,6 +29,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
@@ -52,6 +53,7 @@ import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.text.style.ForegroundColorSpan;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -171,6 +173,26 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private final Map<String, Bitmap> heroArtCache = new HashMap<>();
     /** The app whose artwork heroArt shows, so focusing it again only fades it back in. */
     private String heroArtKey;
+    // ---- hero_feed (HeroFeed): the Trakt companion's items on the shelf while the dock is at rest ----
+    private HeroFeed heroFeed;
+    private boolean heroFeedOn;
+    private int heroFeedIntervalMs;
+    private List<HeroFeed.Entry> feedItems = Collections.emptyList();
+    private int feedIndex;
+    /** The shelf shows a carousel item instead of the focused app's name. */
+    private boolean carouselShowing;
+    /** Where the dock's top was when the shelf was last placed, so the taller carousel shelf can be re-placed. */
+    private float lastDockTop = Float.NaN;
+    private ImageView heroFeedArt;
+    private TextView heroSynopsis;
+    private LinearLayout heroChips;
+    private long feedArtId = -1;
+    private final Runnable carouselStart = this::showCarousel;
+    private final Runnable carouselAdvance = () -> {
+        if (!carouselShowing || feedItems.isEmpty()) return;
+        feedIndex = (feedIndex + 1) % feedItems.size();
+        showCarouselItem(true);
+    };
     /** The focus glow's colour while the cinematic shelf tints it, 0 for plain white glass. */
     private int glassAccent;
     private int ambientColor = -1;
@@ -531,6 +553,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         cinematicWhiteFocus = cfg.cinematicWhiteFocus;
         heroArtAlpha = cfg.cinematicArt / 100f;
         if (cinematic) setUpCinematicShelf(cfg.cinematicScrim);
+        if (cfg.heroFeed && dockRow && cfg.dockTitle) setUpHeroFeed(cfg);
         // dock_title false: the name above the dock (and the cinematic lines under it) never shows; the glow
         // still follows the dock.
         if (!cfg.dockTitle) hero.setVisibility(View.GONE);
@@ -1103,6 +1126,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onResume() {
         super.onResume();
         resumed = true;
+        if (heroFeed != null) {
+            heroFeed.start();
+            scheduleCarousel();
+        }
         // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(LocalDate.now())) {
             recreate();
@@ -1315,6 +1342,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     public void onUserInteraction() {
         super.onUserInteraction();
         restartIdleClock();
+        if (heroFeedOn) {
+            // Any key brings the app's name back; the carousel returns once the dock has been still for 1.5 s.
+            if (carouselShowing && !hero.hasFocus()) exitCarousel();
+            scheduleCarousel();
+        }
     }
 
     private void restartIdleClock() {
@@ -1326,6 +1358,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onPause() {
         super.onPause();
         resumed = false;
+        if (heroFeed != null) {
+            exitCarousel();
+            heroFeed.stop();
+        }
         // No UP reaches a paused Home, so a vendor-key hold it saw go down would still open its app later.
         // Only Home's own share is dropped: a key service that saw the same DOWN keeps its hold.
         RemoteKeys.release(this);
@@ -1379,6 +1415,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         grid.getRecycledViewPool().clear();
         heroArtCache.clear();
         heroArtKey = null;
+        if (heroFeed != null) heroFeed.release();   // onResume starts it again
         wallpaperPlayer.releaseForMemoryPressure();
         tileRefresh.invalidate();
     }
@@ -1399,6 +1436,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onDestroy() {
         super.onDestroy();
         RemoteKeys.release(this);
+        if (heroFeed != null) heroFeed.release();
         cancelHoldOk();
         if (gameDay != null) gameDay.shutdown();
         unregisterReceiver(packageReceiver);
@@ -1451,6 +1489,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (resumed && event.getKeyCode() >= 1000 && RemoteKeys.handle(this, event, homeAppKeys.get(event.getKeyCode()),
                 homeHoldAppKeys.get(event.getKeyCode()))) return true;
         if (handleSettingsKey(event)) return true;
+        if (heroFeedOn && handleCarouselKey(event)) return true;
         if (holdOk(event)) return true;
         if (tileMenuEnabled && !reordering && openPopup == null && cardPrompt == null
                 && event.getKeyCode() == KeyEvent.KEYCODE_MENU) {
@@ -1928,6 +1967,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     // ---- top shelf -------------------------------------------------------------------------------
 
     private void showHero(int position, float dockTopInRoot) {
+        lastDockTop = dockTopInRoot;
+        if (carouselShowing) return;   // the carousel owns the shelf until a key brings the name back
+        if (heroFeedOn) scheduleCarousel();
         String label = adapter.labelAt(position);
         int color = adapter.ambientColorAt(position);
         float y = dockTopInRoot - 14 * density - 26 * density - hero.getHeight();
@@ -2001,6 +2043,278 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (!cinematic) return;
         updateHeroMeta(position);
         updateHeroDots(position);
+    }
+
+    // ---- hero_feed carousel ----------------------------------------------------------------------
+
+    /** hero_feed: the views the carousel adds to the shelf, and the provider reader. Nothing shows until items arrive. */
+    private void setUpHeroFeed(Config cfg) {
+        heroFeedOn = true;
+        heroFeedIntervalMs = cfg.heroFeedInterval * 1000;
+        heroFeedArt = findViewById(R.id.heroFeedArt);
+        heroSynopsis = findViewById(R.id.heroSynopsis);
+        heroChips = findViewById(R.id.heroChips);
+        heroFeedArt.forceHasOverlappingRendering(false);
+        // A frosted outline while the carousel has focus; nothing otherwise.
+        GradientDrawable focus = new GradientDrawable();
+        focus.setColor(0x14FFFFFF);
+        focus.setStroke((int) (2 * density), 0xB3FFFFFF);
+        focus.setCornerRadius(22 * density);
+        StateListDrawable bg = new StateListDrawable();
+        bg.addState(new int[]{android.R.attr.state_focused}, focus);
+        hero.setBackground(bg);
+        heroFeed = new HeroFeed(this, handler, items -> {
+            feedItems = items;
+            if (items.isEmpty()) {
+                exitCarousel();
+                return;
+            }
+            feedIndex = Math.min(feedIndex, items.size() - 1);
+            if (carouselShowing) showCarouselItem(false);
+            else scheduleCarousel();
+        });
+    }
+
+    private boolean dockTileFocused() {
+        int pos = focusedTilePosition();
+        return pos >= 0 && dockRow && (singleRow || pos < COLUMNS);
+    }
+
+    /** Starts the 1.5 s wait for the carousel, when the dock is focused and nothing else is going on. */
+    private void scheduleCarousel() {
+        handler.removeCallbacks(carouselStart);
+        if (!heroFeedOn || !resumed || carouselShowing || feedItems.isEmpty() || reordering || openPopup != null
+                || cardPrompt != null || appLibrary != null || !dockTileFocused()) return;
+        handler.postDelayed(carouselStart, 1500);
+    }
+
+    private void showCarousel() {
+        if (!resumed || carouselShowing || feedItems.isEmpty() || !heroShown || !dockTileFocused() || Float.isNaN(lastDockTop)) return;
+        carouselShowing = true;
+        hero.setFocusable(true);
+        int pad = (int) (10 * density);
+        hero.setPadding(pad, pad, pad, pad);
+        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) hero.getLayoutParams();
+        lp.setMarginStart((int) (68 * density) - pad);
+        hero.setLayoutParams(lp);
+        heroName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 36f);
+        heroName.setMaxWidth((int) (560 * density));
+        topMargin(heroMeta, 6);
+        topMargin(heroDots, 10);
+        heroName.setEllipsize(TextUtils.TruncateAt.END);
+        heroMeta.setVisibility(View.VISIBLE);
+        heroSynopsis.setVisibility(View.VISIBLE);
+        heroChips.setVisibility(View.VISIBLE);
+        heroDots.setVisibility(View.VISIBLE);
+        heroFeedArt.setVisibility(View.VISIBLE);
+        showCarouselItem(true);
+    }
+
+    /** Fills the shelf with the current item and fades its backdrop in; (re)starts the advance timer. */
+    private void showCarouselItem(boolean animate) {
+        if (feedItems.isEmpty()) return;
+        feedIndex = Math.max(0, Math.min(feedIndex, feedItems.size() - 1));
+        final HeroFeed.Entry e = feedItems.get(feedIndex);
+        handler.removeCallbacks(carouselAdvance);
+        handler.postDelayed(carouselAdvance, heroFeedIntervalMs);
+        Runnable fill = () -> {
+            heroName.setText(e.title);
+            String meta = e.meta != null ? e.meta : (e.year > 0 ? String.valueOf(e.year) : "");
+            heroMeta.setText(meta.isEmpty() ? e.kicker : e.kicker + "  ·  " + meta);
+            heroMeta.setVisibility(View.VISIBLE);
+            heroSynopsis.setText(e.synopsis);
+            heroChips.removeAllViews();
+            addFeedChip("IMDb", e.imdb, 0x99F5C518);
+            addFeedChip("RT", e.rt, 0x99FA320A);
+            addFeedChip("Trakt", e.trakt, 0xA6ED1C24);
+            drawDots(feedItems.size(), feedIndex);
+            placeCarouselShelf();
+        };
+        if (animate && animations && !reducedMotion) {
+            hero.animate().cancel();
+            hero.animate().alpha(0f).translationX(-12 * density).setDuration(120).withEndAction(() -> {
+                if (!carouselShowing) return;
+                fill.run();
+                hero.setTranslationX(12 * density);
+                hero.animate().alpha(1f).translationX(0f).setDuration(200).start();
+            }).start();
+        } else {
+            hero.animate().cancel();
+            fill.run();
+            hero.setTranslationX(0f);
+            hero.setAlpha(1f);
+        }
+        feedArtId = e.id;
+        heroFeed.backdrop(e, 640, 360, bmp -> {
+            if (!carouselShowing || feedArtId != e.id) return;
+            heroFeedArt.animate().cancel();
+            if (bmp == null) {
+                heroFeedArt.animate().alpha(0f).setDuration(200).start();
+                return;
+            }
+            if (!animations || reducedMotion || heroFeedArt.getAlpha() == 0f) {
+                heroFeedArt.setImageBitmap(bmp);
+                if (animations) heroFeedArt.animate().alpha(1f).setDuration(reducedMotion ? Motion.REDUCED_MS : 500).start();
+                else heroFeedArt.setAlpha(1f);
+                return;
+            }
+            heroFeedArt.animate().alpha(0f).setDuration(140).withEndAction(() -> {
+                heroFeedArt.setImageBitmap(bmp);
+                heroFeedArt.animate().alpha(1f).setDuration(420).start();
+            }).start();
+        });
+    }
+
+    private void addFeedChip(String label, String value, int border) {
+        if (value == null) return;
+        TextView t = new TextView(this);
+        t.setTypeface(heroMeta.getTypeface());
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
+        t.setTextColor(0xFFFFFFFF);
+        t.setText(label + "  " + value);
+        int ph = (int) (10 * density), pv = (int) (4 * density);
+        t.setPadding(ph, pv, ph, pv);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(0x1AFFFFFF);
+        bg.setStroke((int) density, border);
+        bg.setCornerRadius(999 * density);
+        t.setBackground(bg);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.rightMargin = (int) (8 * density);
+        heroChips.addView(t, lp);
+    }
+
+    /**
+     * The carousel shelf is taller than the name alone: measure it now and keep its text's bottom a little above the
+     * dock. When it would reach up into the clock and date (the header ends about 108dp down), the synopsis gives up
+     * lines, three to one, and the shelf never goes above the header.
+     */
+    private void placeCarouselShelf() {
+        if (Float.isNaN(lastDockTop)) return;
+        float minTop = 90 * density;   // under the clock (26dp down, 52sp tall)
+        int lines = 3;
+        heroSynopsis.setMaxLines(lines);
+        float y;
+        while (true) {
+            hero.measure(View.MeasureSpec.makeMeasureSpec(root.getWidth(), View.MeasureSpec.AT_MOST),
+                    View.MeasureSpec.makeMeasureSpec(root.getHeight(), View.MeasureSpec.AT_MOST));
+            y = lastDockTop - 12 * density - hero.getMeasuredHeight();
+            if (y >= minTop || lines == 1) break;
+            heroSynopsis.setMaxLines(--lines);
+        }
+        hero.setY(Math.max(y, minTop));
+    }
+
+    /** The shelf back to the focused app's name; the focus back on its tile if the carousel had it. */
+    private void exitCarousel() {
+        handler.removeCallbacks(carouselStart);
+        handler.removeCallbacks(carouselAdvance);
+        if (!carouselShowing) return;
+        carouselShowing = false;
+        boolean hadFocus = hero.hasFocus();
+        feedArtId = -1;
+        hero.animate().cancel();
+        hero.setTranslationX(0f);
+        hero.setAlpha(1f);
+        hero.setFocusable(false);
+        hero.setPadding(0, 0, 0, 0);
+        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) hero.getLayoutParams();
+        lp.setMarginStart((int) (68 * density));
+        hero.setLayoutParams(lp);
+        heroName.setTextSize(TypedValue.COMPLEX_UNIT_SP, cinematic ? 68f : 48f);
+        heroName.setMaxWidth(Integer.MAX_VALUE);
+        topMargin(heroMeta, 12);
+        topMargin(heroDots, 16);
+        heroName.setEllipsize(null);
+        heroSynopsis.setVisibility(View.GONE);
+        heroChips.setVisibility(View.GONE);
+        heroChips.removeAllViews();
+        heroDots.setVisibility(cinematic && heroDotsShown ? View.VISIBLE : View.GONE);
+        heroMeta.setVisibility(cinematic ? View.INVISIBLE : View.GONE);
+        heroFeedArt.animate().cancel();
+        if (animations && !reducedMotion) {
+            heroFeedArt.animate().alpha(0f).setDuration(260).withEndAction(() -> {
+                if (!carouselShowing) heroFeedArt.setVisibility(View.GONE);
+            }).start();
+        } else {
+            heroFeedArt.setAlpha(0f);
+            heroFeedArt.setVisibility(View.GONE);
+        }
+        int pos = focusedTilePosition();
+        if (pos < 0) pos = lastFocused;
+        if (pos >= 0 && pos < adapter.appCount()) {
+            fillHero(pos, adapter.labelAt(pos));
+            if (!Float.isNaN(lastDockTop)) {
+                hero.measure(View.MeasureSpec.makeMeasureSpec(root.getWidth(), View.MeasureSpec.AT_MOST),
+                        View.MeasureSpec.makeMeasureSpec(root.getHeight(), View.MeasureSpec.AT_MOST));
+                hero.setY(lastDockTop - 14 * density - 26 * density - hero.getMeasuredHeight());
+            }
+        }
+        if (hadFocus && resumed) focusTile(lastFocused);
+    }
+
+    /**
+     * Keys for the carousel. With the shelf focused: Left/Right move items, OK opens the title in the companion app,
+     * Down and Back return to the dock, Up goes on to the top bar. From a dock tile, Up focuses the showing carousel.
+     */
+    private boolean handleCarouselKey(KeyEvent event) {
+        if (!carouselShowing || reordering || openPopup != null || cardPrompt != null) return false;
+        int code = event.getKeyCode();
+        boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
+        if (hero.hasFocus()) {
+            switch (code) {
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    if (down && feedItems.size() > 1) {
+                        int n = feedItems.size();
+                        feedIndex = (feedIndex + (code == KeyEvent.KEYCODE_DPAD_LEFT ? n - 1 : 1)) % n;
+                        showCarouselItem(true);
+                    }
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                case KeyEvent.KEYCODE_BACK:
+                case KeyEvent.KEYCODE_ESCAPE:
+                    if (down) exitCarousel();
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_UP:
+                    if (down) {
+                        exitCarousel();
+                        firstTopButton().requestFocus();
+                    }
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_CENTER:
+                case KeyEvent.KEYCODE_ENTER:
+                case KeyEvent.KEYCODE_NUMPAD_ENTER:
+                    if (!down && !event.isCanceled() && !feedItems.isEmpty()) openFeedItem(feedItems.get(feedIndex));
+                    return true;
+                default:
+                    return false;
+            }
+        }
+        if (code == KeyEvent.KEYCODE_DPAD_UP && down && dockTileFocused()) {
+            hideGlass();
+            hero.requestFocus();
+            return true;
+        }
+        return false;
+    }
+
+    private void topMargin(View v, int dp) {
+        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+        lp.topMargin = (int) (dp * density);
+        v.setLayoutParams(lp);
+    }
+
+    /** OK on a carousel item: the companion's details page for it. */
+    private void openFeedItem(HeroFeed.Entry e) {
+        Intent i = new Intent().setClassName(HeroFeed.PACKAGE, HeroFeed.DETAILS_ACTIVITY)
+                .putExtra("trakt_id", e.traktId).putExtra("kind", e.kind)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(i);
+        } catch (ActivityNotFoundException | SecurityException ex) {
+            Log.w("TvHomeHeroFeed", "companion details not opened: " + ex.getMessage());
+        }
     }
 
     // ---- cinematic shelf -------------------------------------------------------------------------
@@ -2105,6 +2419,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             int rowStart = position - position % COLUMNS;
             count = Math.min(COLUMNS, adapter.getItemCount() - rowStart);
         }
+        drawDots(count, shelfEveryRow ? position % COLUMNS : position);
+    }
+
+    /** count dots, the on-th drawn long and white. Hebrew docks start on the right, so do the dots. */
+    private void drawDots(int count, int on) {
         heroDots.setVisibility(count > 1 ? View.VISIBLE : View.INVISIBLE);
         if (heroDots.getChildCount() != count) {
             heroDots.removeAllViews();
@@ -2120,10 +2439,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         for (int i = 0; i < count; i++) {
             View dot = heroDots.getChildAt(rtlAppGrid ? count - 1 - i : i);
-            boolean on = i == (shelfEveryRow ? position % COLUMNS : position);
-            ((GradientDrawable) dot.getBackground()).setColor(on ? 0xFFFFFFFF : 0x4DFFFFFF);
+            boolean lit = i == on;
+            ((GradientDrawable) dot.getBackground()).setColor(lit ? 0xFFFFFFFF : 0x4DFFFFFF);
             ViewGroup.LayoutParams lp = dot.getLayoutParams();
-            int w = (int) ((on ? 20 : 6) * density);
+            int w = (int) ((lit ? 20 : 6) * density);
             if (lp.width != w) {
                 lp.width = w;
                 dot.setLayoutParams(lp);

@@ -1165,7 +1165,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (requestCode == LAUNCHER_SETTINGS_REQUEST && resultCode == RESULT_OK
                 && data != null && data.getBooleanExtra(LauncherSettingsActivity.EXTRA_REORDER, false)) {
             getIntent().putExtra(LauncherSettingsActivity.EXTRA_REORDER, true);
-            // The old activity must not consume the pending action, or rebuild a second time in onResume.
+            if (!Config.settingsChanged(settingsRevision, settingsRevision())) {
+                // Nothing was changed before Reorder was chosen: keep this activity and its tiles, and start the
+                // reorder when the window has focus again (onWindowFocusChanged). A recreate() here blanked Home
+                // for a moment on every use.
+                return;
+            }
+            // Something changed too: rebuild with it first. The old activity must not consume the pending action,
+            // or rebuild a second time in onResume.
             settingsRecreationPending = true;
             settingsRevision = settingsRevision();
             recreate();

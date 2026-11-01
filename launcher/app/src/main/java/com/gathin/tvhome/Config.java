@@ -164,6 +164,8 @@ final class Config {
     final int libraryColumns;
     /** Icon-only top-bar pills grow to show their name while focused (pill_labels_on_focus). */
     final boolean pillLabelsOnFocus;
+    /** Launcher settings opens with the TV's own settings as its first, focused row (tv_settings_first). */
+    final boolean tvSettingsFirst;
     /** Icon on a card tinted from that icon, instead of the app's banner (config.xml uniform_tiles). */
     final boolean uniformTiles;
     /** Background colour behind everything, #RRGGBB; black unless a theme says otherwise. */
@@ -286,7 +288,7 @@ final class Config {
                    String sourcePanelExtra, boolean coocaaSources, String inputAction, List<String> inputSources,
                    String inputUriScheme, int columns, int rowsBelowDock, boolean animations, boolean advancedEffects,
                    boolean shamsiDate, String greetingName, boolean moduleCards, boolean reducedMotion, boolean bootToLiveTv, boolean openOnStartChoice, boolean dockTitle, boolean dockRow, boolean topMenu, boolean launcherSettingsButton, boolean reorderButton, boolean showNetworkPill, boolean showInputsPill, boolean iconOnlyButtons, boolean iconOnlyInputs, boolean libraryButton, boolean showLibraryPill, int wifiLabelWidth, boolean alwaysShowNames, boolean wallpaperTrueColor, boolean focusOvershoot, String vpnApp,
-                   boolean showHomeSettingsShortcut, boolean showStats, String gameDay, boolean appLibrary, boolean appLibrarySelection, boolean libraryOkOpens, int libraryColumns, boolean pillLabelsOnFocus, boolean uniformTiles, int backgroundColor, int skyIntensity,
+                   boolean showHomeSettingsShortcut, boolean showStats, String gameDay, boolean appLibrary, boolean appLibrarySelection, boolean libraryOkOpens, int libraryColumns, boolean pillLabelsOnFocus, boolean tvSettingsFirst, boolean uniformTiles, int backgroundColor, int skyIntensity,
                    int[] settingsKeycodes, boolean settingsKeyPanel, boolean restoreKeyServices, boolean wallpaperEnabled, File wallpaper, List<File> wallpapers,
                    int wallpaperRotationMinutes, int wallpaperDim, int dockOpacity, String wallpaperOrder, boolean overlayApplied,
                    Festival festival, int[] inputKeycodes, List<String> appKeys, String stockHomeRedirect,
@@ -361,6 +363,7 @@ final class Config {
         this.libraryOkOpens = libraryOkOpens;
         this.libraryColumns = libraryColumns;
         this.pillLabelsOnFocus = pillLabelsOnFocus;
+        this.tvSettingsFirst = tvSettingsFirst;
         this.uniformTiles = uniformTiles;
         this.backgroundColor = backgroundColor;
         this.skyIntensity = skyIntensity;
@@ -495,6 +498,7 @@ final class Config {
         boolean libraryOkOpens = res.getBoolean(R.bool.library_ok_opens);
         int libraryColumns = res.getInteger(R.integer.library_columns);
         boolean pillLabelsOnFocus = res.getBoolean(R.bool.pill_labels_on_focus);
+        boolean tvSettingsFirst = res.getBoolean(R.bool.tv_settings_first);
         boolean uniformTiles = res.getBoolean(R.bool.uniform_tiles);
         int background = 0xFF000000;
         int skyIntensity = res.getInteger(R.integer.sky_intensity);
@@ -610,6 +614,7 @@ final class Config {
             libraryOkOpens = bool(json, "library_ok_opens", libraryOkOpens);
             libraryColumns = integer(json, "library_columns", libraryColumns, 0, 8);
             pillLabelsOnFocus = bool(json, "pill_labels_on_focus", pillLabelsOnFocus);
+            tvSettingsFirst = bool(json, "tv_settings_first", tvSettingsFirst);
             uniformTiles = bool(json, "uniform_tiles", uniformTiles);
             background = color(json, "background_color", background);
             skyIntensity = integer(json, "sky_intensity", skyIntensity, 0, 100);
@@ -711,7 +716,7 @@ final class Config {
                 Math.max(0, rowsBelow), animations, advancedEffects, shamsi, greetingName, moduleCards, reducedMotion, bootToLiveTv,
                 openOnStartChoice, dockTitle, dockRow, topMenu, launcherSettingsButton, reorderButton, showNetworkPill, showInputsPill,
                 iconOnlyButtons, iconOnlyInputs, libraryButton, showLibraryPill, wifiLabelWidth, alwaysShowNames, wallpaperTrueColor, focusOvershoot,
-                vpn, homeSettings, showStats, gameDay, library, librarySelection, libraryOkOpens, libraryColumns, pillLabelsOnFocus, uniformTiles, background,
+                vpn, homeSettings, showStats, gameDay, library, librarySelection, libraryOkOpens, libraryColumns, pillLabelsOnFocus, tvSettingsFirst, uniformTiles, background,
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, restoreKeyServices, wallpaperEnabled, wallpaper,
                 wallpapers, rotationMinutes, wallpaperDim, dockOpacity, wallpaperOrder, applied, festival, inputKeycodes, appKeys, stockHomeRedirect,
                 json == null ? Collections.emptyList() : raceCalendar(json), cinematic, ambientGlow, appGlow, fadeRows,

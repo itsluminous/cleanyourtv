@@ -173,7 +173,21 @@ public final class LauncherSettingsActivity extends Activity {
         findViewById(R.id.tvSettingsChoice).setOnClickListener(v ->
                 open(SystemSettings.intent(this, Settings.ACTION_SETTINGS)));
         refresh();
-        if (config.launcherSettingsButton) reorderChoice.requestFocus();
+        View tvSettingsChoice = findViewById(R.id.tvSettingsChoice);
+        if (config.tvSettingsFirst) {
+            // tv_settings_first: the TV's own settings move from the foot of the page to just under the title and take
+            // the first focus, so a click on Settings still reaches them in one more press.
+            LinearLayout page = (LinearLayout) tvSettingsChoice.getParent();
+            page.removeView(tvSettingsChoice);
+            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) tvSettingsChoice.getLayoutParams();
+            lp.topMargin = Math.round(28 * getResources().getDisplayMetrics().density);
+            page.addView(tvSettingsChoice, 1, lp);
+            if (reorderChoice.getVisibility() == View.VISIBLE) {
+                ((LinearLayout.LayoutParams) reorderChoice.getLayoutParams()).topMargin =
+                        Math.round(8 * getResources().getDisplayMetrics().density);
+            }
+            tvSettingsChoice.requestFocus();
+        } else if (config.launcherSettingsButton) reorderChoice.requestFocus();
         else columnChoices[Math.max(0, Math.min(columns - 4, 3))].requestFocus();
     }
 

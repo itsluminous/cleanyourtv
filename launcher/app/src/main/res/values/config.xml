@@ -420,6 +420,10 @@
     <!-- With icon_only_buttons or icon_only_inputs: the focused pill grows to show its name, and shrinks back to
          the round icon when focus leaves. Off by default; a theme can set "pill_labels_on_focus": true. -->
     <bool name="pill_labels_on_focus">false</bool>
+    <!-- Launcher settings opens with "TV system settings" as its first row, focused, so the TV's own settings stay one
+         click away when launcher_settings_button sends a click on Settings to this page. Off by default; a theme can
+         set "tv_settings_first": true. -->
+    <bool name="tv_settings_first">false</bool>
 
     <!-- Apps pre-seeded into the App library's "added" set at startup (config.xml library_apps, or a theme's
          config.json). They show on Home as if the owner had added them in the App library UI, and stay

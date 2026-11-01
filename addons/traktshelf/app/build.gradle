@@ -20,11 +20,11 @@ if (secretsFile.isFile()) {
 def key = { String name -> '"' + (secrets[name] ?: '').replace('\\', '\\\\').replace('"', '\\"') + '"' }
 
 android {
-    namespace 'com.kupraki.traktshelf'
+    namespace 'com.itsluminous.traktshelf'
     compileSdk 34
 
     defaultConfig {
-        applicationId 'com.kupraki.traktshelf'
+        applicationId 'com.itsluminous.traktshelf'
         minSdk 26
         targetSdk 34
         versionCode 1

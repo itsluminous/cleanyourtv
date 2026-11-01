@@ -26,13 +26,13 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * hero_feed: the Trakt shelf app's items (package com.kupraki.traktshelf), read through its content provider. The launcher
+ * hero_feed: the Trakt shelf app's items (package com.itsluminous.traktshelf), read through its content provider. The launcher
  * only queries and opens what the provider offers; no network, no file paths, no dependency. When the provider is
  * missing or refuses, the list is empty and the shelf behaves as without the switch.
  */
 final class HeroFeed {
     private static final String TAG = "TvHomeHeroFeed";
-    static final String PACKAGE = "com.kupraki.traktshelf";
+    static final String PACKAGE = "com.itsluminous.traktshelf";
     static final String DETAILS_ACTIVITY = PACKAGE + ".DetailsActivity";
     static final Uri ITEMS = Uri.parse("content://" + PACKAGE + ".hero/items");
     /** Items beyond this are not read: the carousel is a glance, and each backdrop costs about 0.9 MB decoded. */

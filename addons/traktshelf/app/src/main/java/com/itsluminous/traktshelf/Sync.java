@@ -1,4 +1,4 @@
-package com.kupraki.traktshelf;
+package com.itsluminous.traktshelf;
 
 import android.app.job.JobInfo;
 import android.app.job.JobScheduler;
@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 final class Sync {
     private static final String TAG = "TraktShelf.Sync";
-    static final String ACTION_SYNCED = "com.kupraki.traktshelf.SYNCED";
+    static final String ACTION_SYNCED = "com.itsluminous.traktshelf.SYNCED";
     static final String EXTRA_ERROR = "error";
     private static final int JOB_ID = 1;
     private static final long PERIOD_MS = 6L * 3600_000L;

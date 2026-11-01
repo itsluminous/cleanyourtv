@@ -1,4 +1,4 @@
-package com.kupraki.traktshelf;
+package com.itsluminous.traktshelf;
 
 import android.app.Activity;
 import android.content.Context;

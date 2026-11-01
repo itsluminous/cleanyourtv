@@ -1,4 +1,4 @@
-package com.kupraki.traktshelf;
+package com.itsluminous.traktshelf;
 
 import android.content.ContentProvider;
 import android.content.ContentValues;
@@ -16,9 +16,9 @@ import java.util.List;
 /**
  * Read-only, exported: what the launcher's hero carousel reads.
  *
- * content://com.kupraki.traktshelf.hero/items                    the items, ranked (see {@link #COLUMNS})
- * content://com.kupraki.traktshelf.hero/image/backdrop/<_id>     the backdrop JPEG, through openFile
- * content://com.kupraki.traktshelf.hero/image/poster/<_id>       the poster JPEG
+ * content://com.itsluminous.traktshelf.hero/items                    the items, ranked (see {@link #COLUMNS})
+ * content://com.itsluminous.traktshelf.hero/image/backdrop/<_id>     the backdrop JPEG, through openFile
+ * content://com.itsluminous.traktshelf.hero/image/poster/<_id>       the poster JPEG
  *
  * poster_path and backdrop_path hold those image URIs, so a reader opens them with ContentResolver.openInputStream
  * and never needs a file permission. Observers of /items are notified after every sync and after a Settings change
@@ -26,7 +26,7 @@ import java.util.List;
  */
 public final class HeroProvider extends ContentProvider {
     private static final String TAG = "TraktShelf.Provider";
-    public static final String AUTHORITY = "com.kupraki.traktshelf.hero";
+    public static final String AUTHORITY = "com.itsluminous.traktshelf.hero";
     public static final Uri ITEMS = Uri.parse("content://" + AUTHORITY + "/items");
     static final String[] COLUMNS = {"_id", "kind", "title", "year", "synopsis", "imdb_rating", "rt_rating", "trakt_rating",
             "imdb_id", "trakt_id", "poster_path", "backdrop_path", "source_row", "rank", "meta", "next_episode"};

@@ -37,7 +37,7 @@
         <!-- What the launcher's hero carousel reads: items and their pictures. Read-only; see HeroProvider. -->
         <provider
             android:name=".HeroProvider"
-            android:authorities="com.kupraki.traktshelf.hero"
+            android:authorities="com.itsluminous.traktshelf.hero"
             android:exported="true"
             android:grantUriPermissions="false" />
 

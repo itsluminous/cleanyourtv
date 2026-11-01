@@ -1,4 +1,4 @@
-package com.kupraki.traktshelf;
+package com.itsluminous.traktshelf;
 
 import org.json.JSONArray;
 import org.json.JSONException;

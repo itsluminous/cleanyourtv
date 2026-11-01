@@ -1,4 +1,4 @@
-package com.kupraki.traktshelf;
+package com.itsluminous.traktshelf;
 
 import android.app.job.JobParameters;
 import android.app.job.JobService;

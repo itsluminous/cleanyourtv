@@ -22,7 +22,7 @@ titles while the dock is at rest, read from this app's content provider (no netw
 | Trailer | A YouTube watch URL to TizenTube when it is installed, SmartTube otherwise, with no chooser; when neither is there and more than one other app takes YouTube links, a chooser among those. |
 | Settings | Account, Sync now, Default player (Ask each time or one of the installed players), **Carousel rows** (a tick list: Up next, Recommended shows, Recommended movies, Watchlist, Trending, Recently watched; all but Recently watched by default), **Carousel items** (6, 9, 12, 15 or 20; 12 by default), **Watchlist order** (Date added, newest first, or Release date, the titles still to come soonest first and then the released ones newest first; the Home row and the carousel's watchlist items both follow it), Sign out. Kept in SharedPreferences; a change notifies the provider's observers, so the launcher's shelf follows at once. |
 | Writes | Add to / remove from watchlist, mark watched (a show's next episode, or the movie). |
-| Provider | `content://com.kupraki.traktshelf.hero/items`, read-only, exported: `_id`, `kind`, `title`, `year`, `synopsis`, `imdb_rating`, `rt_rating`, `trakt_rating`, `imdb_id`, `trakt_id`, `poster_path`, `backdrop_path` (both `content://…/image/{poster,backdrop}/<_id>`, opened with `ContentResolver.openInputStream`), `source_row`, `rank`, `meta`, `next_episode`. As many items as Settings → Carousel items asks (12 by default), from the rows ticked there, Up next first, each row with its share and the leftover in row order; observers are notified after every sync and after a Settings change. |
+| Provider | `content://com.itsluminous.traktshelf.hero/items`, read-only, exported: `_id`, `kind`, `title`, `year`, `synopsis`, `imdb_rating`, `rt_rating`, `trakt_rating`, `imdb_id`, `trakt_id`, `poster_path`, `backdrop_path` (both `content://…/image/{poster,backdrop}/<_id>`, opened with `ContentResolver.openInputStream`), `source_row`, `rank`, `meta`, `next_episode`. As many items as Settings → Carousel items asks (12 by default), from the rows ticked there, Up next first, each row with its share and the leftover in row order; observers are notified after every sync and after a Settings change. |
 | Card | Label "Trakt", caption "Up next and picks", accent `#ED1C24`. |
 
 ## Keys
@@ -50,7 +50,7 @@ TV_HOST=<tv ip> tools/venv/bin/python -I tools/tv.py 'pm install -r /data/local/
 ```
 
 Then open **Trakt** on Home, press **Sign in**, and enter the code at `trakt.tv/activate`. Check the provider
-from a shell: `tools/tv.py 'content query --uri content://com.kupraki.traktshelf.hero/items'`.
+from a shell: `tools/tv.py 'content query --uri content://com.itsluminous.traktshelf.hero/items'`.
 
 ## Permissions
 

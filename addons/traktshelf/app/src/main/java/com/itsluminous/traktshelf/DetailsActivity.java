@@ -98,6 +98,25 @@ public final class DetailsActivity extends Activity {
         play.requestFocus();
     }
 
+    // TizenTube's cold start drops the trailer link; Players re-sends it, telling cold from warm by these three.
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Players.ColdStartResend.cancel();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Players.ColdStartResend.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Players.ColdStartResend.onStop(this);
+    }
+
     private void write(String what) {
         Auth auth = new Auth(this);
         if (!auth.signedIn()) {

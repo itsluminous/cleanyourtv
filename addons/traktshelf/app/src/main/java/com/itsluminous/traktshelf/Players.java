@@ -9,6 +9,9 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -25,7 +28,8 @@ final class Players {
     static final String KEY_PLAYER = "player";   // ask | stremio | cloudstream | netmirror
     static final String STREMIO = "com.stremio.one", CLOUDSTREAM = "com.lagradost.cloudstream3", NETMIRROR = "app.netmirror.newtv";
     /** Trailers go to the first of these that is installed: TizenTube, then SmartTube's builds. */
-    static final String[] TRAILER_PREFERRED = {"io.gh.reisxd.tizentube.cobalt", "org.smarttube.stable", "org.smarttube.beta", "com.teamsmart.videomanager.tv"};
+    static final String TIZENTUBE = "io.gh.reisxd.tizentube.cobalt";
+    static final String[] TRAILER_PREFERRED = {TIZENTUBE, "org.smarttube.stable", "org.smarttube.beta", "com.teamsmart.videomanager.tv"};
 
     private Players() {
     }
@@ -117,7 +121,9 @@ final class Players {
         List<ResolveInfo> handlers = a.getPackageManager().queryIntentActivities(view, 0);
         // TizenTube when installed, SmartTube otherwise: straight there, no chooser.
         for (String pkg : TRAILER_PREFERRED) for (ResolveInfo r : handlers) if (pkg.equals(r.activityInfo.packageName)) {
-            start(a, new Intent(view).setPackage(pkg));
+            Intent target = new Intent(view).setPackage(pkg);
+            if (TIZENTUBE.equals(pkg)) ColdStartResend.arm(target);
+            start(a, target);
             return;
         }
         if (handlers.size() == 1) {
@@ -149,5 +155,71 @@ final class Players {
 
     static SharedPreferences prefs(Context c) {
         return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    }
+
+    /**
+     * TizenTube (Cobalt) loses a YouTube link it is started with cold. Starboard keeps the intent's URL as the
+     * "initial deep link", the first document that reads it (TizenTube's own user script) consumes it, and the
+     * YouTube TV app, which reads it next, gets an empty string and opens its home page. Warm, the same intent
+     * reaches the already loaded page as a deep-link event and the video plays. Nothing in the app's intent
+     * filter or extras avoids this (every URL form and an explicit component behave the same cold; the Cobalt
+     * "args" extra only carries switches), and other processes cannot be queried on Android 10, so the companion
+     * tells cold from warm by timing: the system stops the sending activity once TizenTube has drawn, which takes
+     * about 0.55 s warm and 1.1 s or more cold (process start plus Cobalt's libraries) on the Mi TV 4A. After a
+     * cold start the same intent is sent again once the page is up, about 6 s after the first; the activity is
+     * singleTask, so it arrives as onNewIntent and plays the video. A re-send onto a video already playing would
+     * restart it, which is why warm starts are left alone. Hooks: DetailsActivity's onPause, onStop and onStart.
+     */
+    static final class ColdStartResend {
+        /** The companion's onPause-to-onStop gap above which TizenTube is taken to have started cold. */
+        static final long COLD_GAP_MS = 850;
+        /** When the re-sent intent goes out, counted from the first one: the YouTube TV page is listening by then. */
+        static final long RESEND_AFTER_MS = 6000;
+        /** A stop more than this long after the trailer was started is unrelated to it. */
+        static final long WINDOW_MS = 4000;
+        private static final Handler HANDLER = new Handler(Looper.getMainLooper());
+        private static Intent armed;
+        private static long startedAt, pausedAt;
+        private static Runnable pending;
+
+        private ColdStartResend() {
+        }
+
+        static void arm(Intent i) {
+            cancel();
+            armed = new Intent(i);
+            startedAt = SystemClock.uptimeMillis();
+            pausedAt = 0;
+        }
+
+        static void onPause() {
+            if (armed != null && pausedAt == 0) pausedAt = SystemClock.uptimeMillis();
+        }
+
+        static void onStop(Context c) {
+            if (armed == null) return;
+            long now = SystemClock.uptimeMillis();
+            boolean inWindow = now - startedAt <= WINDOW_MS;
+            boolean cold = pausedAt > 0 && now - pausedAt >= COLD_GAP_MS;
+            Intent again = armed;
+            armed = null;
+            if (!inWindow || !cold) return;
+            final Context app = c.getApplicationContext();
+            pending = () -> {
+                pending = null;
+                try {
+                    app.startActivity(again.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (ActivityNotFoundException | SecurityException ignored) {
+                }
+            };
+            HANDLER.postAtTime(pending, startedAt + RESEND_AFTER_MS);
+        }
+
+        /** The companion is back in front: the person left TizenTube, so nothing is sent to it. */
+        static void cancel() {
+            armed = null;
+            if (pending != null) HANDLER.removeCallbacks(pending);
+            pending = null;
+        }
     }
 }

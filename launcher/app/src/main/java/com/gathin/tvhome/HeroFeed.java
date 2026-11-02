@@ -241,14 +241,17 @@ final class HeroFeed {
         Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
         canvas.drawBitmap(src, m, paint);
         src.recycle();
-        // Fade: transparent on the left third (the text's side) and along the bottom, into the wallpaper.
+        // Fade: transparent on the left third (the text's side), along the top and along the bottom, into the wallpaper.
         Paint mask = new Paint();
         mask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
         mask.setShader(new LinearGradient(rtl ? w : 0, 0, rtl ? 0 : w, 0, new int[]{0x00000000, 0x00000000, 0xFF000000, 0xFF000000},
                 new float[]{0f, 0.22f, 0.6f, 1f}, Shader.TileMode.CLAMP));
         canvas.drawRect(0, 0, w, h, mask);
-        mask.setShader(new LinearGradient(0, 0, 0, h, new int[]{0xFF000000, 0xFF000000, 0x00000000},
-                new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
+        // Top: the top bar sits over the art (its pills about 37 to 80dp down, 11 to 23% of the 349dp view), and a
+        // bright backdrop (sky, snow) under frosted white pills makes them unreadable. Transparent through the top 10%,
+        // opaque only from 40% down, so the pills see at most a third of the art and the clock none of it.
+        mask.setShader(new LinearGradient(0, 0, 0, h, new int[]{0x00000000, 0x00000000, 0xFF000000, 0xFF000000, 0x00000000},
+                new float[]{0f, 0.10f, 0.40f, 0.45f, 1f}, Shader.TileMode.CLAMP));
         canvas.drawRect(0, 0, w, h, mask);
         return out;
     }

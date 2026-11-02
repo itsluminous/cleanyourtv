@@ -361,6 +361,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** fill_dock false: how many dock slots held an app when reorder mode started. */
     private int dockedAtStart;
     private View btnReorder;
+    /** The top-bar pills on pill_bg_over_art, their frost over a dark base, while a carousel backdrop is up behind them. */
+    private boolean pillsOverArt;
     /** dock_apps as loaded (config.xml or a theme): a saved Order only applies while these are unchanged. */
     private List<String> dockApps;
     /** fill_dock false: the dock can have empty slots, which reorder mode leaves out and restores afterwards. */
@@ -2229,6 +2231,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroFeed.backdrop(e, 640, 360, bmp -> {
             if (!carouselShowing || feedArtId != e.id) return;
             heroFeedArt.animate().cancel();
+            setPillsOverArt(bmp != null);
             if (bmp == null) {
                 heroFeedArt.animate().alpha(0f).setDuration(200).start();
                 return;
@@ -2287,6 +2290,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     /**
+     * The top-bar pills over the carousel's backdrop: the same frost over a dark base (pill_bg_over_art), so their white
+     * icons read over a bright sky as well as over the wallpaper; back to pill_bg when no backdrop is behind them. The
+     * VPN pill is left alone, its own drawable is dark glass already. The padding is kept across the swap.
+     */
+    private void setPillsOverArt(boolean on) {
+        if (pillsOverArt == on) return;
+        pillsOverArt = on;
+        int bg = on ? R.drawable.pill_bg_over_art : R.drawable.pill_bg;
+        for (View pill : new View[]{btnInputs, btnWifi, btnReorder, btnLibraryTop, findViewById(R.id.btnSettings)}) {
+            if (pill == null) continue;
+            int l = pill.getPaddingLeft(), t = pill.getPaddingTop(), r = pill.getPaddingRight(), b = pill.getPaddingBottom();
+            pill.setBackgroundResource(bg);
+            pill.setPadding(l, t, r, b);
+        }
+    }
+
+    /**
      * The shelf back to the focused app's name (the companion has no items, or Home is going away); the focus back
      * on its tile if the carousel had it, and the names under the tiles off again.
      */
@@ -2295,6 +2315,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         applyTileNames(false);
         if (!carouselShowing) return;
         carouselShowing = false;
+        setPillsOverArt(false);
         boolean hadFocus = hero.hasFocus();
         feedArtId = -1;
         hero.animate().cancel();

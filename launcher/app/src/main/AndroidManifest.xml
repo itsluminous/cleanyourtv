@@ -201,7 +201,8 @@
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <!-- Screensaver: pick it in Settings, or `settings put secure screensaver_components
-             com.gathin.tvhome/.ClockDream` over adb. -->
+             com.gathin.tvhome/.ClockDream` over adb. Under another applicationId the component is
+             <applicationId>/com.gathin.tvhome.ClockDream: the class keeps the Java package. -->
         <service
             android:name=".ClockDream"
             android:label="@string/dream_name"

@@ -16,7 +16,10 @@ import shlex
 import sys
 import time
 
-PACKAGE = "com.gathin.tvhome"
+# LAUNCHER_PACKAGE=<id>: the same launcher built under another applicationId (theme.sh reads the same variable).
+PACKAGE = os.environ.get("LAUNCHER_PACKAGE") or "com.gathin.tvhome"
+# The Java package never changes, so under another applicationId the Home activity is spelled out in full.
+MAIN = ".MainActivity" if PACKAGE == "com.gathin.tvhome" else "com.gathin.tvhome.MainActivity"
 SERVICES = "enabled_accessibility_services"
 FLAG = "accessibility_enabled"
 ACTION = "android.accessibilityservice.AccessibilityService"
@@ -117,7 +120,7 @@ def restart(dev, pause=time.sleep):
         if home.splitlines()[-1:] and home.splitlines()[-1].startswith(PACKAGE + "/"):
             start = "-a android.intent.action.MAIN -c android.intent.category.HOME"
         else:
-            start = "-n " + PACKAGE + "/.MainActivity"
+            start = "-n " + PACKAGE + "/" + MAIN
         shell(dev, f"am start --user {user} {start}")
         if not helpers:
             return

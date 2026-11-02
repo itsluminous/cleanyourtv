@@ -21,6 +21,13 @@ It needs JDK 17 and Android SDK platform 34. On macOS: `brew install openjdk@17 
 and `sdkmanager "platforms;android-34" "build-tools;34.0.0"`. On Linux the install script finds
 `~/Android/Sdk` and the `java` on your PATH.
 
+Another package name: `LAUNCHER_PACKAGE=<id>` builds and installs the launcher under that `applicationId`
+(`launcher/build-and-install.sh`, `tools/theme.sh` and `tools/theme_restart.py` all read it), alongside a
+`com.gathin.tvhome` already on the TV. The Java package stays `com.gathin.tvhome`, so components read
+`<id>/.MainActivity` and `<id>/com.gathin.tvhome.ClockDream`; the module-card contract strings do not change.
+Launcher settings → Backup & restore → Import from another launcher copies the old package's settings, app
+order, hidden apps, dock, card approvals and theme into the new one.
+
 ## Configure
 
 [`config.xml`](../launcher/app/src/main/res/values/config.xml) sets:

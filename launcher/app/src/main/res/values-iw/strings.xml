@@ -158,4 +158,21 @@
     <string name="clock_format_system">מערכת</string>
     <string name="clock_format_12">12 שעות</string>
     <string name="clock_format_24">24 שעות</string>
+    <!-- backup_restore -->
+    <string name="backup_section">גיבוי ושחזור</string>
+    <string name="backup_now">גיבוי ההגדרות</string>
+    <string name="backup_now_hint">העדפות, סדר האפליקציות, אפליקציות מוסתרות, המעגן, כרטיסי מודול וערכת הנושא אל Android/data/%1$s/files/backup</string>
+    <string name="backup_saved">נשמר %1$s</string>
+    <string name="backup_failed">הגיבוי נכשל: %1$s</string>
+    <string name="restore_file">שחזור מקובץ</string>
+    <string name="restore_file_hint">גיבוי מהתיקייה הזו, או קובץ שנדחף אליה דרך adb</string>
+    <string name="restore_file_none">אין עדיין קובצי גיבוי</string>
+    <string name="restore_import">ייבוא ממשגר אחר</string>
+    <string name="restore_import_hint">מעתיק את ההגדרות, סדר האפליקציות וערכת הנושא של %1$s על אלה של המשגר הזה</string>
+    <string name="restore_confirm_title">להחליף את הגדרות המשגר הזה?</string>
+    <string name="restore_confirm_message">כל מה שהוגדר כאן יוחלף ב-%1$s. מסך הבית ייבנה מחדש מיד אחר כך.</string>
+    <string name="restore_done">ההגדרות שוחזרו</string>
+    <string name="restore_failed">השחזור נכשל: %1$s</string>
+    <string name="restore_button">שחזור</string>
+    <string name="backup_readable_note">כל אפליקציה בטלוויזיה הזו יכולה לקרוא את ההגדרות האלה בכתובת content://%1$s.backup/settings. הן מכילות את סדר האפליקציות, האפליקציות המוסתרות, המעגן, אישורי כרטיסי המודול וערכת הנושא, ושום דבר סודי.</string>
 </resources>

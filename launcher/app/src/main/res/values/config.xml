@@ -450,6 +450,14 @@
          below its row shrinks in the same proportion, so rows_below_dock still fits. A theme can set "row_gap": 32
          for rows about 30% closer. -->
     <integer name="row_gap">45</integer>
+    <!-- hero_height: the height of the top shelf (the room above the dock line, where the app's name or the hero_feed
+         carousel sits) as a percent of the layout's own, 50 to 130. Below 100 the dock and the rows under it move up
+         in proportion and more rows show; the carousel keeps to the room it has (two synopsis lines at 80 and below,
+         one line, no rating chips and a smaller title at 60 and below), its backdrop shrinks with the shelf, and the
+         header with the clock and the pills never moves. Above 100 the dock sits lower and the rows below it run off
+         the bottom until you press Down. A choice made in Launcher settings (Hero banner height) overrides this; a
+         theme can set "hero_height": 60 for a compact shelf. -->
+    <integer name="hero_height">100</integer>
 
     <!-- Apps pre-seeded into the App library's "added" set at startup (config.xml library_apps, or a theme's
          config.json). They show on Home as if the owner had added them in the App library UI, and stay

@@ -53,6 +53,11 @@
     <string name="columns_label">Apps per row</string>
     <string name="rows_below_dock_label">Rows below dock</string>
     <string name="dock_opacity_label">Dock band opacity</string>
+    <string name="hero_height_label">Hero banner height</string>
+    <string name="hero_height_compact">Compact</string>
+    <string name="hero_height_short">Short</string>
+    <string name="hero_height_normal">Normal</string>
+    <string name="hero_height_tall">Tall</string>
     <string name="wallpaper_label">Wallpaper</string>
     <string name="wallpaper_state">Wallpaper: %1$s</string>
     <string name="wallpaper_none">None</string>

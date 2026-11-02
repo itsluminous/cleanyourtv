@@ -188,9 +188,18 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     /** The same with row_gap (the dock_row layout's tile-to-next-tile distance in dp; ITEM_EXTRA_DP by default). */
     static int tileWidthPx(int innerWidthPx, int gridHeightPx, int columns, int rowsBelowDock, boolean dockTitle,
                            boolean dockRow, float density, int rowGapDp) {
+        return tileWidthPx(innerWidthPx, gridHeightPx, columns, rowsBelowDock, dockTitle, dockRow, density, rowGapDp, 100);
+    }
+
+    /**
+     * The same with hero_height: the title's room above the dock scales with the shelf (percent of TITLE_ROOM_DP), so a
+     * short shelf lets the rows under the dock keep bigger tiles and a tall one shrinks them a little sooner.
+     */
+    static int tileWidthPx(int innerWidthPx, int gridHeightPx, int columns, int rowsBelowDock, boolean dockTitle,
+                           boolean dockRow, float density, int rowGapDp, int heroHeightPct) {
         int w = tileWidthPx(innerWidthPx, columns, density);
         if (gridHeightPx <= 0 || rowsBelowDock <= 0) return w;
-        float reserved = (dockRow ? dockExtraDp(rowGapDp) + BOTTOM_ROOM_DP + (dockTitle ? TITLE_ROOM_DP : 0)
+        float reserved = (dockRow ? dockExtraDp(rowGapDp) + BOTTOM_ROOM_DP + (dockTitle ? TITLE_ROOM_DP * heroHeightPct / 100f : 0)
                 : TOP_ROOM_DP + COMPACT_BOTTOM_ROOM_DP) * density;
         float perItem = (gridHeightPx - reserved) / (rowsBelowDock + 1);
         float tileH = perItem - (dockRow ? rowGapDp : COMPACT_ITEM_EXTRA_DP) * density;
@@ -210,6 +219,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final boolean shelfEveryRow;
     /** row_gap: tile bottom to the next row's tile top, dp (ITEM_EXTRA_DP is item_app.xml's own). */
     private final int rowGapDp;
+    /** hero_height: the shelf's share of its room, percent; the tile fit reserves the title's room in proportion. */
+    private final int heroHeightPct;
     /** hero_feed: the carousel owns the shelf, so every tile (the dock's too) carries its name while focused. */
     private boolean namesUnderTiles;
     /** The owner's saved order (reorder button, Order): key -> rank. Empty when there is none or it no longer applies. */
@@ -278,6 +289,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         this.dockTitle = cfg.dockTitle;
         this.shelfEveryRow = cfg.shelfEveryRow && cfg.dockRow && !cfg.singleRow;
         this.rowGapDp = cfg.rowGap;
+        this.heroHeightPct = cfg.heroHeight;
         this.dockRow = cfg.dockRow;
         this.singleRow = cfg.singleRow;
         this.restNameAlpha = cfg.alwaysShowNames ? 0.75f : 0f;
@@ -455,7 +467,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         float density = parent.getResources().getDisplayMetrics().density;
         int width = parent.getWidth() > 0 ? parent.getWidth() : parent.getMeasuredWidth();
         int inner = width - parent.getPaddingLeft() - parent.getPaddingRight();
-        int w = tileWidthPx(inner, parent.getHeight(), dockSize, rowsBelowDock, dockTitle, dockRow, density, rowGapDp), h = tileHeightPx(w);
+        int w = tileWidthPx(inner, parent.getHeight(), dockSize, rowsBelowDock, dockTitle, dockRow, density, rowGapDp, heroHeightPct), h = tileHeightPx(w);
         View card = v.findViewById(R.id.card);
         ViewGroup.LayoutParams cardLp = card.getLayoutParams();
         cardLp.width = w;

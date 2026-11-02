@@ -35,6 +35,10 @@ import java.util.function.Consumer;
 final class SettingsPanel {
     private static final int PANEL_BG = 0xFF1B1E22, ROW_FOCUS = 0xFF2F3338, CAPTION = 0xFF4C8DF5, SUBTITLE = 0xFFA7ADB4;
     private static final int[] DOCK_OPACITIES = {100, 70, 50, 30};
+    /** hero_height: the four shelf heights the panel offers, percent; a fifth row hands the choice back to the theme. */
+    static final int[] HERO_HEIGHTS = {60, 80, 100, 120};
+    private static final int[] HERO_HEIGHT_NAMES = {R.string.hero_height_compact, R.string.hero_height_short,
+            R.string.hero_height_normal, R.string.hero_height_tall};
     private static final String[] CLOCK_FORMATS = {"system", "12", "24"};
 
     private final Activity activity;
@@ -136,6 +140,22 @@ final class SettingsPanel {
                 choose(activity.getString(R.string.dock_opacity_label), labels, checked, which ->
                         save(e -> e.putInt(Config.DOCK_OPACITY_KEY, DOCK_OPACITIES[which])));
             });
+            // Hero banner height: the shelf's share of the room above the dock. A saved choice overrides the theme's
+            // hero_height; "Theme default" removes it, so the theme's key (100 unless it says otherwise) decides again.
+            int chosenHero = choices.getInt(Config.HERO_HEIGHT_KEY, -1);
+            row(R.drawable.ic_picture, activity.getString(R.string.hero_height_label), heroHeightLabel(chosenHero, config.heroHeight), v -> {
+                String[] labels = new String[HERO_HEIGHTS.length + 1];
+                int checked = HERO_HEIGHTS.length;
+                for (int i = 0; i < HERO_HEIGHTS.length; i++) {
+                    labels[i] = heroHeightLabel(HERO_HEIGHTS[i], HERO_HEIGHTS[i]);
+                    if (HERO_HEIGHTS[i] == chosenHero) checked = i;
+                }
+                labels[HERO_HEIGHTS.length] = activity.getString(R.string.wallpaper_theme_default);
+                choose(activity.getString(R.string.hero_height_label), labels, checked, which -> save(e -> {
+                    if (which == HERO_HEIGHTS.length) e.remove(Config.HERO_HEIGHT_KEY);
+                    else e.putInt(Config.HERO_HEIGHT_KEY, HERO_HEIGHTS[which]);
+                }));
+            });
         }
         String clock = choices.getString(Config.CLOCK_FORMAT_KEY, config.clockFormat);
         String[] clockLabels = {activity.getString(R.string.clock_format_system),
@@ -168,7 +188,8 @@ final class SettingsPanel {
                 activity.getString(R.string.follow_theme_hint), v -> {
             choices.edit().remove("columns").remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
                     .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY)
-                    .remove(Config.DOCK_OPACITY_KEY).remove(Config.CLOCK_FORMAT_KEY).remove(OpenOnStart.KEY).commit();
+                    .remove(Config.DOCK_OPACITY_KEY).remove(Config.CLOCK_FORMAT_KEY).remove(Config.HERO_HEIGHT_KEY)
+                    .remove(OpenOnStart.KEY).commit();
             changed.run();
             showMain();
         });
@@ -352,7 +373,21 @@ final class SettingsPanel {
         return choices.contains("columns") || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
                 || choices.contains("animations") || choices.contains("advanced_effects")
                 || choices.contains(Config.WALLPAPER_CHOICE_KEY) || choices.contains(Config.DOCK_OPACITY_KEY)
-                || choices.contains(Config.CLOCK_FORMAT_KEY) || choices.contains(OpenOnStart.KEY);
+                || choices.contains(Config.CLOCK_FORMAT_KEY) || choices.contains(Config.HERO_HEIGHT_KEY)
+                || choices.contains(OpenOnStart.KEY);
+    }
+
+    /**
+     * The hero height row's value: the named level with its percent ("Short (80%)") when the percent is one of the four,
+     * the bare percent otherwise (a theme's 70, say); {@code chosen} is the saved choice, -1 for none, and then the
+     * theme's value shows.
+     */
+    private String heroHeightLabel(int chosen, int theme) {
+        int pct = chosen > 0 ? chosen : theme;
+        for (int i = 0; i < HERO_HEIGHTS.length; i++) {
+            if (HERO_HEIGHTS[i] == pct) return activity.getString(HERO_HEIGHT_NAMES[i]) + " (" + pct + "%)";
+        }
+        return pct + "%";
     }
 
     private void open(Intent intent) {

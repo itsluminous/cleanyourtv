@@ -802,6 +802,19 @@ final class Config {
         }
     }
 
+    /**
+     * backup_restore: Backup.restore has just written the theme files, with today's stamp. Record their signature
+     * as seen, so the next load does not take the write for a theme push and clear the layout choices that were
+     * restored with them.
+     */
+    static void adoptThemeFiles(Context ctx) {
+        File dir = dir(ctx);
+        File config = dir == null ? null : new File(dir, FILE_NAME);
+        File revision = dir == null ? null : new File(dir, THEME_REVISION_NAME);
+        ctx.getSharedPreferences(SETTINGS_NAME, Context.MODE_PRIVATE).edit()
+                .putString(THEME_SIGNATURE_KEY, fileStamp(config) + ":" + revisionToken(revision)).commit();
+    }
+
     /** The dock band opacity chosen in Launcher settings, or the theme's when none (or an out-of-range one) is saved. */
     static int chosenDockOpacity(int chosen, int theme) {
         return chosen >= 30 && chosen <= 100 ? chosen : theme;

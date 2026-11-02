@@ -1,0 +1,93 @@
+package com.gathin.tvhome;
+
+import android.content.ContentProvider;
+import android.content.ContentValues;
+import android.database.Cursor;
+import android.database.MatrixCursor;
+import android.net.Uri;
+import android.os.ParcelFileDescriptor;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
+/**
+ * backup_restore: the launcher's settings, read-only, for anything on the TV that asks. Authority
+ * {@code <applicationId>.backup}, so the same build under two package names (com.gathin.tvhome and
+ * com.itsluminous.tvhome) can read each other's and the new one imports from the old one.
+ *
+ * <pre>
+ *   adb shell content read --uri content://com.itsluminous.tvhome.backup/settings   # the Backup.export JSON
+ *   adb shell content read --uri content://com.itsluminous.tvhome.backup/backups    # the files in files/backup/
+ * </pre>
+ *
+ * No permission guards it on purpose: it holds the app order, the hidden-apps list, the dock, the module-card
+ * approvals and the theme, nothing secret, and a permission would keep the renamed launcher out too. It writes
+ * nothing: every mutating method answers "no", so a stray app on the LAN cannot reset the TV through it. The
+ * export is written to the cache dir and handed over as a read-only descriptor (`content read` wants a file).
+ */
+public class BackupProvider extends ContentProvider {
+    static final String AUTHORITY_SUFFIX = ".backup";
+    static final String SETTINGS = "settings";
+    static final String BACKUPS = "backups";
+
+    @Override
+    public ParcelFileDescriptor openFile(Uri uri, String mode) throws FileNotFoundException {
+        if (mode == null || mode.contains("w") || mode.contains("t")) throw new FileNotFoundException("read-only");
+        List<String> path = uri.getPathSegments();
+        if (path.size() != 1) throw new FileNotFoundException(String.valueOf(uri));
+        String body;
+        try {
+            if (SETTINGS.equals(path.get(0))) body = Backup.export(getContext()).toString(2);
+            else if (BACKUPS.equals(path.get(0))) body = backups().toString(2);
+            else throw new FileNotFoundException(String.valueOf(uri));
+        } catch (org.json.JSONException e) {
+            throw new FileNotFoundException("export failed: " + e.getMessage());
+        }
+        File out = new File(getContext().getCacheDir(), "backup-" + path.get(0) + ".json");
+        try {
+            Backup.writeBytes(out, body.getBytes(StandardCharsets.UTF_8));
+        } catch (java.io.IOException e) {
+            throw new FileNotFoundException("cannot write " + out + ": " + e.getMessage());
+        }
+        return ParcelFileDescriptor.open(out, ParcelFileDescriptor.MODE_READ_ONLY);
+    }
+
+    /** The backup folder's files with whether this app can read each (a file adb pushed there, for instance). */
+    private JSONObject backups() throws org.json.JSONException {
+        JSONObject root = new JSONObject();
+        File dir = Backup.backupDir(getContext());
+        root.put("dir", dir == null ? JSONObject.NULL : dir.getPath());
+        JSONArray files = new JSONArray();
+        File[] listed = dir == null ? null : dir.listFiles();
+        if (listed != null) {
+            java.util.Arrays.sort(listed);
+            for (File f : listed) {
+                files.put(new JSONObject().put("name", f.getName()).put("size", f.length())
+                        .put("readable", f.canRead()).put("modified", f.lastModified()));
+            }
+        }
+        root.put("files", files);
+        return root;
+    }
+
+    @Override public boolean onCreate() { return true; }
+
+    @Override public String getType(Uri uri) { return "application/json"; }
+
+    /** One row naming the package, for a caller that only wants to know the provider is there. */
+    @Override
+    public Cursor query(Uri uri, String[] projection, String selection, String[] args, String order) {
+        MatrixCursor c = new MatrixCursor(new String[]{"package", "version"});
+        c.addRow(new Object[]{getContext().getPackageName(), Backup.VERSION});
+        return c;
+    }
+
+    @Override public Uri insert(Uri uri, ContentValues values) { return null; }
+    @Override public int delete(Uri uri, String selection, String[] args) { return 0; }
+    @Override public int update(Uri uri, ContentValues values, String selection, String[] args) { return 0; }
+}

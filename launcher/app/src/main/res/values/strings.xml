@@ -165,4 +165,21 @@
     <string name="clock_format_system">System</string>
     <string name="clock_format_12">12-hour</string>
     <string name="clock_format_24">24-hour</string>
+    <!-- backup_restore: the Backup &amp; restore section of the settings panel. %1$s is a package name or a path. -->
+    <string name="backup_section">Backup &amp; restore</string>
+    <string name="backup_now">Back up settings</string>
+    <string name="backup_now_hint">Preferences, app order, hidden apps, dock, module cards and theme to Android/data/%1$s/files/backup</string>
+    <string name="backup_saved">Saved %1$s</string>
+    <string name="backup_failed">Backup failed: %1$s</string>
+    <string name="restore_file">Restore from file</string>
+    <string name="restore_file_hint">A backup from that folder, or one pushed there over adb</string>
+    <string name="restore_file_none">No backup files yet</string>
+    <string name="restore_import">Import from another launcher</string>
+    <string name="restore_import_hint">Copies %1$s\'s settings, app order and theme over this launcher\'s</string>
+    <string name="restore_confirm_title">Replace this launcher\'s settings?</string>
+    <string name="restore_confirm_message">Everything set here is replaced with %1$s. Home rebuilds right after.</string>
+    <string name="restore_done">Settings restored</string>
+    <string name="restore_failed">Restore failed: %1$s</string>
+    <string name="restore_button">Restore</string>
+    <string name="backup_readable_note">Any app on this TV can read these settings at content://%1$s.backup/settings. They hold the app order, hidden apps, dock, module-card approvals and theme, nothing secret.</string>
 </resources>

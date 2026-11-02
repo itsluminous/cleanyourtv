@@ -176,9 +176,75 @@ final class SettingsPanel {
         follow.setAlpha(hasOnTvChoices() ? 1f : 0.5f);
         row(R.drawable.ic_home_settings, activity.getString(R.string.home_settings),
                 activity.getString(R.string.home_settings_help), v -> open(new Intent(activity, HomeSettingsActivity.class)));
+        showBackupRows();
         backHandler = null;
         scroller.scrollTo(0, 0);
         first.requestFocus();
+    }
+
+    /**
+     * backup_restore: the Backup &amp; restore section. Back up writes Backup.export to files/backup/ (reachable as
+     * /sdcard/Android/data/&lt;package&gt;/files/backup over adb, no permission needed); Restore from file lists that
+     * folder, a file adb pushed there included; Import from another launcher shows only while the same launcher under
+     * its other package name is installed and reads its backup provider. Each restore asks first and then closes the
+     * panel, so Home rebuilds with the restored settings.
+     */
+    private void showBackupRows() {
+        String pkg = activity.getPackageName();
+        TextView backupCaption = text(activity.getString(R.string.backup_section), 14, CAPTION, true);
+        backupCaption.setPadding(dp(40), dp(22), dp(40), dp(10));
+        list.addView(backupCaption, new LinearLayout.LayoutParams(-1, -2));
+        row(R.drawable.ic_lock, activity.getString(R.string.backup_now), activity.getString(R.string.backup_now_hint, pkg), v -> {
+            try {
+                File out = Backup.saveToFile(activity);
+                toast(activity.getString(R.string.backup_saved, "Android/data/" + pkg + "/files/" + Backup.BACKUP_DIR + "/" + out.getName()));
+            } catch (Exception e) {
+                toast(activity.getString(R.string.backup_failed, String.valueOf(e.getMessage())));
+            }
+        });
+        row(R.drawable.ic_lock_open, activity.getString(R.string.restore_file), activity.getString(R.string.restore_file_hint), v -> {
+            List<File> files = Backup.backups(activity);
+            if (files.isEmpty()) { toast(activity.getString(R.string.restore_file_none)); return; }
+            String[] labels = new String[files.size()];
+            for (int i = 0; i < labels.length; i++) labels[i] = files.get(i).getName();
+            choose(activity.getString(R.string.restore_file), labels, -1, which -> confirmRestore(labels[which], () -> Backup.read(files.get(which))));
+        });
+        String other = Backup.otherLauncher(activity);
+        if (other != null) {
+            row(R.drawable.ic_input, activity.getString(R.string.restore_import), activity.getString(R.string.restore_import_hint, other),
+                    v -> confirmRestore(other, () -> Backup.readFrom(activity, other)));
+        }
+        TextView note = text(activity.getString(R.string.backup_readable_note, pkg), 13, SUBTITLE, false);
+        note.setPadding(dp(40), dp(6), dp(40), dp(8));
+        list.addView(note, new LinearLayout.LayoutParams(-1, -2));
+    }
+
+    /** What a restore reads: a file or the other launcher's provider. */
+    private interface Source { org.json.JSONObject read() throws Exception; }
+
+    private void confirmRestore(String from, Source source) {
+        new android.app.AlertDialog.Builder(activity)
+                .setTitle(R.string.restore_confirm_title)
+                .setMessage(activity.getString(R.string.restore_confirm_message, from))
+                .setPositiveButton(R.string.restore_button, (d, w) -> {
+                    try {
+                        Backup.restore(activity, source.read());
+                    } catch (Exception e) {
+                        toast(activity.getString(R.string.restore_failed, String.valueOf(e.getMessage())));
+                        showMain();
+                        return;
+                    }
+                    toast(activity.getString(R.string.restore_done));
+                    // Home rebuilds on resume: the settings revision moved (Backup.restore).
+                    activity.setResult(Activity.RESULT_OK);
+                    activity.finish();
+                })
+                .setNegativeButton(android.R.string.cancel, (d, w) -> showMain())
+                .show();
+    }
+
+    private void toast(String message) {
+        android.widget.Toast.makeText(activity, message, android.widget.Toast.LENGTH_LONG).show();
     }
 
     /** A second page: the title names the setting, one row per value, the current one marked; Back returns. */

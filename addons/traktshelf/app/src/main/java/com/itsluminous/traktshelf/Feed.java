@@ -159,6 +159,8 @@ final class Feed {
     /**
      * Items for the launcher's carousel: Settings' rows (Prefs.heroRows) in row order, Up Next first, each with its
      * share of max by weight, then the leftover in row order; only those with a backdrop on disk, each item once.
+     * Titles not out yet (Item.upcoming: a future release day, or an Up Next episode that has not aired) are left
+     * out of every row here; Home still shows them, since the watchlist is the viewer's own list.
      */
     List<Item> heroItems(Context c, int max) {
         Set<String> enabled = Prefs.heroRows(c);
@@ -175,7 +177,8 @@ final class Feed {
                 int take = pass == 0 ? Math.max(1, Math.round(max * HERO_WEIGHT[i] / (float) weightSum)) : Integer.MAX_VALUE;
                 for (Item it : r.items) {
                     if (take <= 0 || out.size() >= max) break;
-                    if (seen.containsKey(it.key()) || it.backdropUrl == null || !new File(img, it.backdropFile()).isFile()) continue;
+                    if (seen.containsKey(it.key()) || it.upcoming() || it.backdropUrl == null
+                            || !new File(img, it.backdropFile()).isFile()) continue;
                     seen.put(it.key(), Boolean.TRUE);
                     out.add(it);
                     take--;

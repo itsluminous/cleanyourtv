@@ -174,7 +174,8 @@ public final class MainActivity extends Activity implements PosterAdapter.Listen
             Feed.Row row = card == null ? null : (Feed.Row) ((View) card.getParent()).getTag();
             tag = (row != null ? getString(row.titleRes()) : "") + " · " + getString(Item.SHOW.equals(it.kind) ? R.string.show : R.string.movie);
         }
-        heroTag.setText(tag);
+        String coming = Ui.coming(this, it);
+        heroTag.setText(coming == null ? tag : coming + " · " + tag);
         heroTitle.setText(it.title);
         heroMeta.setText(it.metaLine());
         heroSynopsis.setText(it.overview);

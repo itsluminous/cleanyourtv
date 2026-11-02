@@ -129,9 +129,11 @@ final class Trakt {
             Item it = Item.fromTrakt(show, Item.SHOW);
             if (it.traktId == 0) continue;
             try {
-                JSONObject p = getObject("/shows/" + it.traktId + "/progress/watched?hidden=false&specials=false&count_specials=false", true);
+                // extended=full puts first_aired on next_episode, so the carousel can skip an episode still to come.
+                JSONObject p = getObject("/shows/" + it.traktId + "/progress/watched?hidden=false&specials=false&count_specials=false&extended=full", true);
                 JSONObject next = p.optJSONObject("next_episode");
                 if (next == null) continue;
+                it.nextAired = Item.date(Item.opt(next, "first_aired"));
                 it.aired = p.optInt("aired");
                 it.completed = p.optInt("completed");
                 it.nextSeason = next.optInt("season");

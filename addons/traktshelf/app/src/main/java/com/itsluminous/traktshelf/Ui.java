@@ -86,4 +86,20 @@ final class Ui {
             for (int i = 0; i < g.getChildCount(); i++) applyFont(g.getChildAt(i));
         }
     }
+
+    /**
+     * The kicker for a title not out yet (Item.upcoming): "Coming 17 May", with the year when it is not this year's,
+     * or "Unreleased" when only Trakt's status says so. Null for a title that is out.
+     */
+    static String coming(Context c, Item it) {
+        if (!it.upcoming()) return null;
+        long at = it.comingAt();
+        if (at == 0) return c.getString(R.string.unreleased);
+        int flags = android.text.format.DateUtils.FORMAT_SHOW_DATE | android.text.format.DateUtils.FORMAT_ABBREV_MONTH;
+        java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+        if (java.time.Instant.ofEpochMilli(at).atZone(zone).getYear() != java.time.LocalDate.now(zone).getYear())
+            flags |= android.text.format.DateUtils.FORMAT_SHOW_YEAR;
+        else flags |= android.text.format.DateUtils.FORMAT_NO_YEAR;
+        return c.getString(R.string.coming, android.text.format.DateUtils.formatDateTime(c, at, flags));
+    }
 }

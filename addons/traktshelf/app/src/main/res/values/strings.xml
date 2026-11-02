@@ -65,4 +65,7 @@
     <string name="about_sync">Sync runs every 6 hours while the TV is online, after sign-in, and from here.</string>
     <string name="movie">Movie</string>
     <string name="show">Show</string>
+    <!-- A title (or an Up Next episode) not out yet: %s is its day, "17 May". Shown on the poster and the hero; such titles stay out of the launcher's carousel. -->
+    <string name="coming">Coming %s</string>
+    <string name="unreleased">Unreleased</string>
 </resources>

@@ -44,6 +44,34 @@ final class Item {
     long listedAt;
     /** Release day (a movie's released, a show's first_aired), epoch ms, for the "Release date" order. 0 when unknown. */
     long released;
+    /** Up Next only: when the next episode first airs (Trakt first_aired), epoch ms. 0 when unknown. */
+    long nextAired;
+
+    /** Trakt show statuses that mean no episode has aired yet; a show with one and no first_aired is upcoming. */
+    private static final List<String> UNAIRED_SHOW = java.util.Arrays.asList("in production", "planned", "upcoming");
+
+    /**
+     * True when the title has not come out yet: its release day, or for Up Next its next episode's air day, is after
+     * today on this device's calendar (today counts as out), or a show with no first_aired whose Trakt status says it
+     * has not aired. A title with no date and no such status is taken as out. The carousel leaves these out; Home
+     * keeps them with a "Coming" kicker.
+     */
+    boolean upcoming() {
+        if (nextAired > 0 && isAfterToday(nextAired)) return true;
+        if (released > 0) return isAfterToday(released);
+        return SHOW.equals(kind) && status != null && UNAIRED_SHOW.contains(status.toLowerCase(java.util.Locale.ROOT));
+    }
+
+    /** The day an upcoming title comes out, epoch ms, for the kicker: the next episode's air day when known. 0 when unknown. */
+    long comingAt() {
+        if (nextAired > 0 && isAfterToday(nextAired)) return nextAired;
+        return released > 0 && isAfterToday(released) ? released : 0;
+    }
+
+    static boolean isAfterToday(long epochMs) {
+        java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+        return java.time.Instant.ofEpochMilli(epochMs).atZone(zone).toLocalDate().isAfter(java.time.LocalDate.now(zone));
+    }
 
     /** A stable id for the provider: kind and Trakt id. */
     long stableId() {
@@ -98,7 +126,7 @@ final class Item {
                 .put("tagline", tagline).put("status", status).put("certification", certification)
                 .put("next_episode", nextEpisode).put("next_season", nextSeason).put("next_number", nextNumber)
                 .put("aired", aired).put("completed", completed).put("enriched_at", enrichedAt).put("source_row", sourceRow)
-                .put("listed_at", listedAt).put("released", released);
+                .put("listed_at", listedAt).put("released", released).put("next_aired", nextAired);
         return j;
     }
 
@@ -134,6 +162,7 @@ final class Item {
         it.sourceRow = opt(j, "source_row");
         it.listedAt = j.optLong("listed_at");
         it.released = j.optLong("released");
+        it.nextAired = j.optLong("next_aired");
         return it;
     }
 

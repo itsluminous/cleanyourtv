@@ -62,6 +62,9 @@ final class PosterAdapter extends RecyclerView.Adapter<PosterAdapter.Holder> {
         h.poster.setImageBitmap(null);
         h.title.setText(it.title);
         h.title.setVisibility(View.VISIBLE);
+        String coming = Ui.coming(h.coming.getContext(), it);
+        h.coming.setText(coming);
+        h.coming.setVisibility(coming == null ? View.GONE : View.VISIBLE);
         boolean progress = it.aired > 0 && it.completed > 0 && it.completed < it.aired;
         h.track.setVisibility(progress ? View.VISIBLE : View.GONE);
         h.bar.setVisibility(progress ? View.VISIBLE : View.GONE);
@@ -98,7 +101,7 @@ final class PosterAdapter extends RecyclerView.Adapter<PosterAdapter.Holder> {
 
     final class Holder extends RecyclerView.ViewHolder {
         final ImageView poster;
-        final TextView title;
+        final TextView title, coming;
         final View track, bar;
         Item item;
 
@@ -106,6 +109,7 @@ final class PosterAdapter extends RecyclerView.Adapter<PosterAdapter.Holder> {
             super(v);
             poster = v.findViewById(R.id.poster);
             title = v.findViewById(R.id.cardTitle);
+            coming = v.findViewById(R.id.coming);
             track = v.findViewById(R.id.progressTrack);
             bar = v.findViewById(R.id.progressBar);
             v.setClipToOutline(true);

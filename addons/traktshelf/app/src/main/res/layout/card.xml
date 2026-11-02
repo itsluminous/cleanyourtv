@@ -27,6 +27,23 @@
         android:maxLines="4"
         android:ellipsize="end"
         android:visibility="gone" />
+    <TextView
+        android:id="@+id/coming"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_margin="6dp"
+        android:paddingStart="7dp"
+        android:paddingEnd="7dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp"
+        android:background="@drawable/kicker"
+        android:textSize="9sp"
+        android:textAllCaps="true"
+        android:letterSpacing="0.08"
+        android:textColor="#F2FFFFFF"
+        android:singleLine="true"
+        android:visibility="gone" />
     <View
         android:id="@+id/progressTrack"
         android:layout_width="match_parent"

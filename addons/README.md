@@ -5,6 +5,11 @@ so they are easy to find, build and review. The launcher in [`launcher/`](../lau
 depends on them: it is built, tested and size-checked without this folder, so an add-on can't make
 the core bigger or change how it behaves. You install an add-on only if you want it.
 
+In this fork, the **Trakt shelf** add-on (`traktshelf`, in the table below) is the companion the launcher's `hero_feed` carousel reads; it needs
+three API keys at build time, read from the git-ignored `work/secrets.env` (its README says how to get them),
+and the launcher it talks to is installed as `com.itsluminous.tvhome`. The module-card contract is unchanged,
+so every other add-on here works with that package too.
+
 ## Add-ons
 
 | Add-on | What it does | Author | Tested on | Permissions | Screenshot |
@@ -40,7 +45,7 @@ the core bigger or change how it behaves. You install an add-on only if you want
 | [TV Inspector](tv-inspector/) | What the remote sends (key name, key code, scan code, device) and what the TV can play: display modes, HDR, video decoders, audio outputs and formats, input devices; every line also in logcat for a `tv.json` or a bug report | [@shaharukhs](https://github.com/shaharukhs) | Sansui TV (Skyworth eleonas, MediaTek MT9676), Android TV 14 | None | <img src="tv-inspector/screenshot.jpg" width="240" alt="TV Inspector on a TV"> |
 | [Game Day](game-day/) | Each team's next game on Home, counted down ("Puck drop in 2h 18m", then "Live now"), from calendar links you add: any team, any sport, no scores; one turn per team, rotating, with the theme's F1 weekend | [@justin-newman](https://github.com/justin-newman) | Hisense 75U75N (hengshan), Google TV 12 | `INTERNET` (your calendar links only) | <img src="game-day/screenshot.jpg" width="240" alt="Game Day on a TV"> |
 | [Haunted](haunted/) | A Halloween screensaver (and a card that starts it): the theme's night photos crossfading, bats drifting across, a ghost floating up, a flickering jack-o'-lantern glow and a small clock, drawn on the TV with no network | CleanYourTV contributors | Not yet tested on a real TV | None | <img src="haunted/screenshot.jpg" width="240" alt="Haunted on a TV"> |
-| [Trakt shelf](traktshelf/) | Your Trakt account as rows of posters: Up next, recommendations, watchlist, trending, with IMDb / Rotten Tomatoes / Trakt ratings from TMDB and OMDb; Play routes to Stremio, CloudStream or NetMirror, trailers to TizenTube or SmartTube; a content provider (`com.itsluminous.traktshelf.hero`) feeds the launcher's `hero_feed` carousel; package `com.itsluminous.traktshelf` | [@kupraki](https://github.com/kupraki) | Xiaomi Mi TV 4A (MiTV-MOOQ1), Android TV 10 | `INTERNET`, network state | <img src="traktshelf/screenshot.jpg" width="240" alt="Trakt shelf on a TV"> |
+| [Trakt shelf](traktshelf/) | Your Trakt account as rows of posters: Up next, recommendations, watchlist, trending, with IMDb / Rotten Tomatoes / Trakt ratings from TMDB and OMDb; Play routes to Stremio, CloudStream or NetMirror, trailers to TizenTube or SmartTube; a content provider (`com.itsluminous.traktshelf.hero`) feeds the launcher's `hero_feed` carousel; package `com.itsluminous.traktshelf` | [@itsluminous](https://github.com/itsluminous) | Xiaomi Mi TV 4A (MiTV-MOOQ1), Android TV 10 | `INTERNET`, network state | <img src="traktshelf/screenshot.jpg" width="240" alt="Trakt shelf on a TV"> |
 
 A widget, an info tile, a storage or smart-home card: if it can live as its own small app, it can live
 here. See the rules below.

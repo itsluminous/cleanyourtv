@@ -2,9 +2,11 @@
 
 [Back to the README](../README.md#the-launcher)
 
-A small native home screen for Android TV: **about 572 KB**, plain Java, built for TVs with 1 GB of RAM.
-No blur, no video, no network permission, no background services. This page has the details the
-README leaves out: settings, languages, remote keys and building it yourself. Every key a theme can
+A small native home screen for Android TV: **about 572 KB** upstream, about 615 KB with this fork's switches,
+plain Java, built for TVs with 1 GB of RAM. No blur, no video, no network permission, no background services.
+This page has the details the README leaves out: settings, languages, remote keys and building it yourself.
+This fork installs it as `com.itsluminous.tvhome` (see [Build it yourself](#build-it-yourself)); the fork's own
+switches and the Backup & restore section are summarised in the [README](../README.md#switches-added-in-this-fork). Every key a theme can
 set is in [`themes/README.md`](../themes/README.md#keys), and the opt-in switches with their
 screenshots are in [`docs/switches.md`](switches.md).
 
@@ -22,8 +24,9 @@ and `sdkmanager "platforms;android-34" "build-tools;34.0.0"`. On Linux the insta
 `~/Android/Sdk` and the `java` on your PATH.
 
 Another package name: `LAUNCHER_PACKAGE=<id>` builds and installs the launcher under that `applicationId`
-(`launcher/build-and-install.sh`, `tools/theme.sh` and `tools/theme_restart.py` all read it), alongside a
-`com.gathin.tvhome` already on the TV. The Java package stays `com.gathin.tvhome`, so components read
+(`launcher/build-and-install.sh`, `tools/theme.sh`, `tools/theme.ps1` and `tools/theme_restart.py` all read it;
+`launcher/build-and-install.ps1` still hard-codes `com.gathin.tvhome`), alongside a `com.gathin.tvhome` already
+on the TV. This fork's TV runs `LAUNCHER_PACKAGE=com.itsluminous.tvhome`. The Java package stays `com.gathin.tvhome`, so components read
 `<id>/.MainActivity` and `<id>/com.gathin.tvhome.ClockDream`; the module-card contract strings do not change.
 Launcher settings → Backup & restore → Import from another launcher copies the old package's settings, app
 order, hidden apps, dock, card approvals and theme into the new one.
@@ -49,9 +52,11 @@ Click **Settings** for the TV's own settings. Hold OK on it for its menu:
   TCL/FFALCON and Fire OS are in `settings_fallback_components` - because that app holds pages
   Android's has no row for, such as Xiaomi's Account & Security with the ADB switch.
 - **Module cards**, with `module_cards`.
-- **Edit dock**, with `dock_row`.
+- **Edit dock**, with `dock_row` (left out, with **Add to dock**, while `shelf_every_row` is on: every row then
+  behaves like the dock).
 - **Reorder apps**: OK picks an app up, the arrows move it, Back places it, and Back again finishes.
-  With `tile_menu`, holding OK on a tile offers **Move**, which picks that app up straight away.
+  With `tile_menu`, holding OK on a tile offers **Move**, which picks that app up straight away. Leaving it
+  no longer recreates Home.
 - **Restart…** while `HomeKeyService` runs, which opens the system power menu (a launcher may not
   restart the TV itself).
 
@@ -70,6 +75,13 @@ The launcher's own page has these rows, top to bottom:
   transitions; they may use more memory) once animations are on.
 - **Open on start**, only with `open_on_start_choice`: Off, or an app that opens instead of Home the first
   time Home comes up after the TV starts. Once per boot, so Home and Back still reach the launcher.
+- **Hero banner height**: Compact (60%), Short (80%), Normal (100%), Tall (120%) or Theme default, the top
+  shelf's height; a shorter shelf lifts the dock and shows more rows (`hero_height` in a theme).
+- **Backup & restore**: **Back up settings** writes every preference, the app order, hidden apps, the dock,
+  module-card approvals and the theme to one JSON file under `/sdcard/Android/data/<package>/files/backup/`;
+  **Restore from file** lists that folder and replaces everything from the file you pick; **Import from another
+  launcher** copies the settings of the same launcher installed under another package name. The read-only
+  provider `content://<package>.backup/settings` exports the same JSON over ADB.
 - **Follow theme (reset on-TV choices)**, which clears every choice above. Pushing or resetting a theme
   clears them too.
 - **Choose default home** opens Android's home picker, and **TV system settings** the TV's own settings

@@ -27,9 +27,11 @@ titles while the dock is at rest, read from this app's content provider (no netw
 
 ## Keys
 
-Register a Trakt API app at [trakt.tv/oauth/applications](https://trakt.tv/oauth/applications) (redirect URI
-`urn:ietf:wg:oauth:2.0:oob`), a [TMDB](https://www.themoviedb.org/settings/api) key (v3 key or v4 read token)
-and an [OMDb](https://www.omdbapi.com/apikey.aspx) key, and put them in a file the build reads and git ignores,
+Register a Trakt API app at [trakt.tv/oauth/applications](https://trakt.tv/oauth/applications): give it a name
+and a redirect URI (`http://localhost` or `urn:ietf:wg:oauth:2.0:oob`; the device flow never uses it), and copy
+only the **Client ID**, since this is a public (PKCE) app and the secret is never needed. Then a
+[TMDB](https://www.themoviedb.org/settings/api) key (the free v3 API key) and an
+[OMDb](https://www.omdbapi.com/apikey.aspx) key (the free tier, activated from its e-mail), and put them in a file the build reads and git ignores,
 by default `work/secrets.env` at the repository root:
 
 ```

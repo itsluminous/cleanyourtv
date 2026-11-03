@@ -1,3 +1,5 @@
+> This is the [itsluminous fork](https://github.com/itsluminous/cleanyourtv) of CleanYourTV. This page describes [upstream](https://github.com/Gathin23/cleanyourtv); the fork's changes (the `com.itsluminous.tvhome` launcher, the Trakt companion, the Xiaomi Mi TV 4A setup) are described only in the English [README.md](README.md).
+
 <p align="center">
   <a href="https://cleanyour.tv"><img src="docs/banner.png" alt="CleanYourTV. Ваш телевізор без реклами. Приберіть зайве з будь-якого Android TV чи Google TV через Wi-Fi і замініть заповнений рекламою головний екран на чистий лончер у стилі Apple TV. Без root, без кабелю, нічого не видаляється, а відкат — один рядок." width="800"></a>
 </p>
@@ -20,7 +22,7 @@
 </p>
 
 <p align="center">
-  <a href="docs/PRESS.md"><img src="docs/card.jpg" alt="407 моделей телевізорів · 106 брендів · 31 мова · лончер на 572 КБ. Про нас писали TechCrunch, TechRadar, Tom's Guide, Mashable, Android Authority, XDA, FlatpanelsHD, It's FOSS, Phandroid, GIGAZINE, Xataka, WinFuture, Frandroid, Macitynet, Techaeris, TechPP та ще 396 видань: 412 статей з 54 країн. Було: стандартний головний екран Google TV зі спонсорською рекламою. Стало: лончер Clean Your TV." width="800"></a>
+  <a href="docs/PRESS.md"><img src="docs/card.jpg" alt="408 моделей телевізорів · 106 брендів · 31 мова · лончер на 572 КБ. Про нас писали TechCrunch, TechRadar, Tom's Guide, Mashable, Android Authority, XDA, FlatpanelsHD, It's FOSS, Phandroid, GIGAZINE, Xataka, WinFuture, Frandroid, Macitynet, Techaeris, TechPP та ще 396 видань: 412 статей з 54 країн. Було: стандартний головний екран Google TV зі спонсорською рекламою. Стало: лончер Clean Your TV." width="800"></a>
 </p>
 
 ## З чого почати
@@ -133,7 +135,7 @@ platform 34 із build-tools 34 (там асистент збирає лонче
 
 | | | | | | |
 |---|---|---|---|---|---|
-| [TCL](https://cleanyour.tv/tvs?q=TCL) · 81 | [Sony](https://cleanyour.tv/tvs?q=Sony) · 46 | [Xiaomi](https://cleanyour.tv/tvs?q=Xiaomi) · 38 | [Philips](https://cleanyour.tv/tvs?q=Philips) · 21 | [Skyworth](https://cleanyour.tv/tvs?q=Skyworth) · 15 | [Hisense](https://cleanyour.tv/tvs?q=Hisense) · 14 |
+| [TCL](https://cleanyour.tv/tvs?q=TCL) · 81 | [Sony](https://cleanyour.tv/tvs?q=Sony) · 46 | [Xiaomi](https://cleanyour.tv/tvs?q=Xiaomi) · 39 | [Philips](https://cleanyour.tv/tvs?q=Philips) · 21 | [Skyworth](https://cleanyour.tv/tvs?q=Skyworth) · 15 | [Hisense](https://cleanyour.tv/tvs?q=Hisense) · 14 |
 | [SHARP](https://cleanyour.tv/tvs?q=SHARP) · 10 | [Amazon Fire TV](https://cleanyour.tv/tvs?q=Amazon%20Fire%20TV) · 9 | [BenQ](https://cleanyour.tv/tvs?q=BenQ) · 6 | [JVC](https://cleanyour.tv/tvs?q=JVC) · 6 | [Panasonic](https://cleanyour.tv/tvs?q=Panasonic) · 6 | [Haier](https://cleanyour.tv/tvs?q=Haier) · 5 |
 | [OnePlus](https://cleanyour.tv/tvs?q=OnePlus) · 4 | [Thomson](https://cleanyour.tv/tvs?q=Thomson) · 4 | [Toshiba](https://cleanyour.tv/tvs?q=Toshiba) · 4 | [Acer](https://cleanyour.tv/tvs?q=Acer) · 3 | [Google](https://cleanyour.tv/tvs?q=Google) · 3 | [Grundig](https://cleanyour.tv/tvs?q=Grundig) · 3 |
 | [Motorola](https://cleanyour.tv/tvs?q=Motorola) · 3 | [Nokia](https://cleanyour.tv/tvs?q=Nokia) · 3 | [NVIDIA Shield](https://cleanyour.tv/tvs?q=NVIDIA%20Shield) · 3 | [RCA](https://cleanyour.tv/tvs?q=RCA) · 3 | [Redmi](https://cleanyour.tv/tvs?q=Redmi) · 3 | [Vu](https://cleanyour.tv/tvs?q=Vu) · 3 |
@@ -282,7 +284,7 @@ Xiaomi (PatchWall). Передайте `STOCK_LAUNCHER=<package>` (`-StockLaunch
 |---|---|
 | **Налаштування** | Порядок дока, приховані застосунки, застосунок ефірного ТБ, від 4 до 7 плиток у рядку, зменшений рух. Усе в [`config.xml`](launcher/app/src/main/res/values/config.xml) |
 | **Налаштування на телевізорі** | Утримайте OK на «Налаштуваннях», щоб відкрити налаштування лончера. Необов'язковий `launcher_settings_button` робить так, що звичайне натискання відкриває їх одразу; налаштування телевізора лишаються на сторінці налаштувань і на своїй плитці |
-| **Теми** | Тло, шпалери й розкладка з `config.json`, надісланого через Wi-Fi, без перезбирання. У [`themes/`](themes/) постачається шістнадцять, включно з вбудованою `default/` |
+| **Теми** | Тло, шпалери й розкладка з `config.json`, надісланого через Wi-Fi, без перезбирання. У [`themes/`](themes/) постачається сімнадцять, включно з вбудованою `default/` |
 | **31 мова** | Дотримується мови телевізора, з повністю дзеркальним розкладом справа наліво для івриту |
 | **Бібліотека застосунків** | Необов'язково: перегляд усіх встановлених застосунків і додавання чи прибирання ярликів із головного екрана. Дивіться [посібник із бібліотеки застосунків](docs/app-library.md) |
 | **Меню плитки** | Необов'язково (`tile_menu`): утримайте OK на плитці для «Перемістити», «Прибрати з головного» та «Про застосунок». Вимкнено — утримання OK відкриває «Про застосунок» |
@@ -466,7 +468,7 @@ TV_HOST=192.168.1.50 tools/venv/bin/python -I tools/check.py examples/<your tv>/
 учасників за перші чотири дні. До 19-го репозиторій називався tv-vibehack; старі посилання працюють.
 
 Через два тижні репозиторій став №1 у трендах GitHub за тиждень 19–25 жовтня: понад 46 тис. зірок і 5,7 тис.
-форків, 1,4 млн переглядів і 260 тис. клонів за 14 днів. Тепер списки охоплюють 407 моделей телевізорів від
+форків, 1,4 млн переглядів і 260 тис. клонів за 14 днів. Тепер списки охоплюють 408 моделей телевізорів від
 106 брендів. Публікації: 412 статей з 54 країн і 229 відео на YouTube та Bilibili, усе в [docs/PRESS.md](docs/PRESS.md)
 (станом на 30 жовтня 2026 року).
 

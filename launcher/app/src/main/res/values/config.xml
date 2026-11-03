@@ -435,7 +435,7 @@
          menu items (Add to dock, Edit dock) are left out, since the first row is only a row. Off by default; a theme
          can set "shelf_every_row": true. -->
     <bool name="shelf_every_row">false</bool>
-    <!-- hero_feed: the top shelf is a carousel of the Trakt companion app's titles (addons/traktshelf, read through its
+    <!-- hero_feed: the top shelf is a carousel of the Trakt companion app's titles (the Trakt shelf add-on, read through its
          content provider): backdrop faded into the wallpaper, title, year, synopsis, IMDb / RT / Trakt chips and
          dots, one item every hero_feed_interval seconds (3 to 120). While that app has items the carousel owns the
          shelf: moving between tiles leaves it alone and the focused app's name shows under its tile instead (with

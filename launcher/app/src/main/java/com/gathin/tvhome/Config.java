@@ -649,8 +649,8 @@ final class Config {
             shelfEveryRow = bool(json, "shelf_every_row", shelfEveryRow);
             heroFeed = bool(json, "hero_feed", heroFeed);
             heroFeedInterval = integer(json, "hero_feed_interval", heroFeedInterval, 3, 120);
-            rowGap = integer(json, "row_gap", rowGap, AppAdapter.MIN_ROW_GAP_DP, 90);
-            heroHeight = integer(json, "hero_height", heroHeight, HERO_HEIGHT_MIN, HERO_HEIGHT_MAX);
+            rowGap = integer(json, "row_gap", rowGap, 29, 90);  // 29 is AppAdapter.MIN_ROW_GAP_DP
+            heroHeight = integer(json, "hero_height", heroHeight, 50, 130);  // HERO_HEIGHT_MIN, HERO_HEIGHT_MAX
             uniformTiles = bool(json, "uniform_tiles", uniformTiles);
             background = color(json, "background_color", background);
             skyIntensity = integer(json, "sky_intensity", skyIntensity, 0, 100);

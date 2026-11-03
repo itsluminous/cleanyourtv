@@ -53,6 +53,11 @@
     <string name="columns_label">Apps per row</string>
     <string name="rows_below_dock_label">Rows below dock</string>
     <string name="dock_opacity_label">Dock band opacity</string>
+    <string name="hero_height_label">Hero banner height</string>
+    <string name="hero_height_compact">Compact</string>
+    <string name="hero_height_short">Short</string>
+    <string name="hero_height_normal">Normal</string>
+    <string name="hero_height_tall">Tall</string>
     <string name="wallpaper_label">Wallpaper</string>
     <string name="wallpaper_state">Wallpaper: %1$s</string>
     <string name="wallpaper_none">None</string>
@@ -108,7 +113,7 @@
     <string name="tile_move">Move</string>
     <string name="reorder_hint">OK picks up an app, arrows move it, Back places it. Back again to finish.</string>
     <string name="reorder_not_saved">Couldn\'t save the new order</string>
-    <string name="app_library">App library</string>
+    <string name="app_library">All apps</string>
     <string name="library_empty">No launchable apps found</string>
     <string name="library_on_home">On Home</string>
     <string name="library_add_home">Add to Home</string>
@@ -153,9 +158,33 @@
     <!-- Cinematic top shelf (cinematic_home): the line under the focused dock app's name; %1$s is when it was
          last opened, e.g. "5 minutes ago" or "yesterday, 9:40 pm". -->
     <string name="last_opened">Last opened %1$s</string>
+    <!-- hero_feed: the kicker line over a carousel item (the Trakt companion's row it came from). -->
+    <string name="hero_feed_up_next">Up next</string>
+    <string name="hero_feed_recommended">Recommended</string>
+    <string name="hero_feed_watchlist">Watchlist</string>
+    <string name="hero_feed_trending">Trending</string>
+    <string name="hero_feed_movie">Movie</string>
+    <string name="hero_feed_show">Show</string>
     <!-- game_day: a game on now, in the race panel. -->
     <string name="game_live">Live now</string>
     <string name="clock_format_system">System</string>
     <string name="clock_format_12">12-hour</string>
     <string name="clock_format_24">24-hour</string>
+    <!-- backup_restore: the Backup &amp; restore section of the settings panel. %1$s is a package name or a path. -->
+    <string name="backup_section">Backup &amp; restore</string>
+    <string name="backup_now">Back up settings</string>
+    <string name="backup_now_hint">Preferences, app order, hidden apps, dock, module cards and theme to Android/data/%1$s/files/backup</string>
+    <string name="backup_saved">Saved %1$s</string>
+    <string name="backup_failed">Backup failed: %1$s</string>
+    <string name="restore_file">Restore from file</string>
+    <string name="restore_file_hint">A backup from that folder, or one pushed there over adb</string>
+    <string name="restore_file_none">No backup files yet</string>
+    <string name="restore_import">Import from another launcher</string>
+    <string name="restore_import_hint">Copies %1$s\'s settings, app order and theme over this launcher\'s</string>
+    <string name="restore_confirm_title">Replace this launcher\'s settings?</string>
+    <string name="restore_confirm_message">Everything set here is replaced with %1$s. Home rebuilds right after.</string>
+    <string name="restore_done">Settings restored</string>
+    <string name="restore_failed">Restore failed: %1$s</string>
+    <string name="restore_button">Restore</string>
+    <string name="backup_readable_note">Any app on this TV can read these settings at content://%1$s.backup/settings. They hold the app order, hidden apps, dock, module-card approvals and theme, nothing secret.</string>
 </resources>

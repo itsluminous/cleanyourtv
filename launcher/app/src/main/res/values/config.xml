@@ -418,6 +418,51 @@
          keeps off Home with hidden_apps. Hold OK still offers Add to Home. app_library_selection wins when both are
          on. Off by default; a theme can set "library_ok_opens": true (also needs app_library). -->
     <bool name="library_ok_opens">false</bool>
+    <!-- Columns of the All apps popup. 0, the default, keeps the one horizontal row of cards. 2 to 8 make a
+         vertical grid of compact cards (a 46dp icon and a one-line name) with that many columns and three rows on
+         screen, scrolling down; Up/Down move between the rows. A theme can set "library_columns": 6. -->
+    <integer name="library_columns">0</integer>
+    <!-- With icon_only_buttons or icon_only_inputs: the focused pill grows to show its name, and shrinks back to
+         the round icon when focus leaves. Off by default; a theme can set "pill_labels_on_focus": true. -->
+    <bool name="pill_labels_on_focus">false</bool>
+    <!-- Launcher settings opens with "TV system settings" as its first row, focused, so the TV's own settings stay one
+         click away when launcher_settings_button sends a click on Settings to this page. Off by default; a theme can
+         set "tv_settings_first": true. -->
+    <bool name="tv_settings_first">false</bool>
+    <!-- Launcher settings as a side panel over Home in the style of the TV's own Settings: a dark sheet on the right
+         with TV system settings first, then the launcher's rows with their current value; a row with several values
+         opens a list in the same panel, Back returns. With launcher_settings_button the Settings pill keeps its gear
+         and its "Settings" label. Off by default (the full-screen page); a theme can set "settings_panel": true. -->
+    <bool name="settings_panel">false</bool>
+    <!-- Every row of tiles behaves like the dock row: focusing a tile in a lower row scrolls that row up to the dock's
+         place under the top shelf, the rows above slide out of view, and the shelf names the focused app in large type
+         with its colour, as it does for the dock. Tiles then carry no name of their own. Needs dock_row; the dock
+         menu items (Add to dock, Edit dock) are left out, since the first row is only a row. Off by default; a theme
+         can set "shelf_every_row": true. -->
+    <bool name="shelf_every_row">false</bool>
+    <!-- hero_feed: the top shelf is a carousel of the Trakt companion app's titles (the Trakt shelf add-on, read through its
+         content provider): backdrop faded into the wallpaper, title, year, synopsis, IMDb / RT / Trakt chips and
+         dots, one item every hero_feed_interval seconds (3 to 120). While that app has items the carousel owns the
+         shelf: moving between tiles leaves it alone and the focused app's name shows under its tile instead (with
+         shelf_every_row the rows still scroll to the dock's line). Up from the dock focuses the carousel, Left/Right
+         move it, OK opens the title in that app, Down or Back returns to the tile. Without the app, or with nothing
+         in it, the shelf is as before. Needs dock_row. Off by default; a theme can set "hero_feed": true. -->
+    <bool name="hero_feed">false</bool>
+    <integer name="hero_feed_interval">8</integer>
+    <!-- row_gap: the space from the bottom of a tile to the top of the tile in the next row, in dp, in the dock_row
+         layout (29 to 90; 45 is the layout's own spacing: 8dp above and below each item, a 7dp gap and the 22dp name
+         under the tile). The name keeps its 29dp and the item's padding takes the rest; the dock's 12dp offset
+         below its row shrinks in the same proportion, so rows_below_dock still fits. A theme can set "row_gap": 32
+         for rows about 30% closer. -->
+    <integer name="row_gap">45</integer>
+    <!-- hero_height: the height of the top shelf (the room above the dock line, where the app's name or the hero_feed
+         carousel sits) as a percent of the layout's own, 50 to 130. Below 100 the dock and the rows under it move up
+         in proportion and more rows show; the carousel keeps to the room it has (two synopsis lines at 80 and below,
+         one line, no rating chips and a smaller title at 60 and below), its backdrop shrinks with the shelf, and the
+         header with the clock and the pills never moves. Above 100 the dock sits lower and the rows below it run off
+         the bottom until you press Down. A choice made in Launcher settings (Hero banner height) overrides this; a
+         theme can set "hero_height": 60 for a compact shelf. -->
+    <integer name="hero_height">100</integer>
 
     <!-- Apps pre-seeded into the App library's "added" set at startup (config.xml library_apps, or a theme's
          config.json). They show on Home as if the owner had added them in the App library UI, and stay

@@ -46,7 +46,8 @@ if (-not (Test-Path $py)) {
     [Console]::Error.WriteLine('run: python -m venv tools\venv; tools\venv\Scripts\python.exe -m pip install -r tools\requirements.txt. Nothing was sent to the TV.')
     exit 2
 }
-$pkg = 'com.gathin.tvhome'
+# LAUNCHER_PACKAGE=<id>: the same launcher built under another applicationId (theme.sh reads the same variable).
+$pkg = if ($env:LAUNCHER_PACKAGE) { $env:LAUNCHER_PACKAGE } else { 'com.gathin.tvhome' }
 # Runs tools\tv.py or b64push.py and stops on a non-zero exit: 'Stop' only covers cmdlets, so a failed
 # native call would otherwise fall through to "Theme ... is on the TV".
 function Invoke-Tv {

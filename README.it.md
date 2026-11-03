@@ -1,3 +1,4 @@
+> This is the [itsluminous fork](https://github.com/itsluminous/cleanyourtv) of CleanYourTV. This page describes [upstream](https://github.com/Gathin23/cleanyourtv); the fork's changes (the `com.itsluminous.tvhome` launcher, the Trakt companion, the Xiaomi Mi TV 4A setup) are described only in the English [README.md](README.md).
 
 <p align="center">
   <a href="https://cleanyour.tv"><img src="docs/banner.png" alt="CleanYourTV: restituisci alla tua TV una schermata Home pulita" width="800"></a>

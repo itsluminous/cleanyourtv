@@ -1,26 +1,149 @@
+# CleanYourTV, the itsluminous fork
+
+This is [itsluminous](https://github.com/itsluminous)'s fork of [CleanYourTV](https://github.com/Gathin23/cleanyourtv)
+for one **Xiaomi Mi TV 4A** (MiTV-MOOQ1, codename tarzan; Android TV 10, API 29, firmware
+`QTG3.200305.006.2591`, 1 GB of RAM). Everything upstream does, this fork does too; what it adds is a launcher
+under its own package name with a few more switches, a Trakt companion app that feeds the launcher's top shelf,
+and the tested list and theme for that TV, so the whole setup can be rebuilt from a clean checkout. Upstream's
+README follows below, under [Upstream README](#upstream-readme); its licence (MIT) and credit stay.
+
+Read in: <a href="README.zh-CN.md">简体中文</a> · <a href="README.zh-TW.md">正體中文</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.ja.md">日本語</a> · <a href="README.it.md">Italiano</a> · <a href="README.nl.md">Nederlands</a> · <a href="README.de.md">Deutsch</a> · <a href="README.uk.md">Українська</a> · <a href="README.tr.md">Türkçe</a> (the translations describe upstream; the fork's changes are only on this page).
+
+## What differs from upstream
+
+| | Upstream | This fork |
+|---|---|---|
+| **Launcher package** | `com.gathin.tvhome` | `com.itsluminous.tvhome`, set with `LAUNCHER_PACKAGE` (the build reads it as `-PlauncherApplicationId`). The Java package stays `com.gathin.tvhome`, so components read `com.itsluminous.tvhome/com.gathin.tvhome.MainActivity`, and the module-card contract strings (`com.gathin.tvhome.category.DOCK_CARD`, `com.gathin.tvhome.card`) are unchanged, so upstream add-ons still plug in. `launcher/build-and-install.sh`, `tools/theme.sh`, `tools/theme.ps1` and `tools/theme_restart.py` honour the variable; `launcher/build-and-install.ps1` still hard-codes `com.gathin.tvhome`. |
+| **Switches** | | Nine theme keys, all off by default, listed [below](#switches-added-in-this-fork); a **Backup & restore** section and a **Hero banner height** row in the settings panel. |
+| **Settings** | A full-screen page | Optionally a side panel over Home in the TV's own style (`settings_panel`), with TV system settings first (`tv_settings_first`). **Reorder apps** no longer recreates Home when you leave it. **Add to dock** and **Edit dock** are hidden while `shelf_every_row` is on, since every row then behaves like the dock. |
+| **App library** | "App library" | Renamed **All apps**; `library_columns` turns it into a vertical grid of compact cards. |
+| **Top shelf** | Names the focused app | With `hero_feed`, a carousel of titles from the Trakt companion: backdrop faded under the top bar, title, synopsis, IMDb / Rotten Tomatoes / Trakt chips over a backing, one dot per item. |
+| **Companion** | | [`addons/traktshelf/`](addons/traktshelf/), package `com.itsluminous.traktshelf`: your Trakt account as rows of posters, with Play, Trailer and watchlist actions, and a content provider the launcher reads. |
+| **APK size** | Under 576 KB, gated in CI | About 615 KB. The gate in this fork's `.github/workflows/ci.yml` is 700 KB; the extra is the panel, the carousel and backup, and it is deliberate here. A pull request upstream would have to fit the 576 KB gate. |
+| **Tested set** | 407 TV models | One: [`examples/xiaomi-mi-tv-4a-mooq1/`](examples/xiaomi-mi-tv-4a-mooq1/) and its theme [`themes/mooq1-frosted/`](themes/mooq1-frosted/). Every upstream list and theme is still here. |
+
+Issues and pull requests for the fork go to [itsluminous/cleanyourtv](https://github.com/itsluminous/cleanyourtv/issues);
+a change that helps every TV belongs upstream, at [Gathin23/cleanyourtv](https://github.com/Gathin23/cleanyourtv).
+
+## Quick start for this TV
+
+The computer needs Python 3, a JDK from 17 through 22 and Android SDK platform 34 with build-tools 34, as
+upstream's [Doing it by hand](#doing-it-by-hand) describes, and USB debugging on in the TV's Developer options.
+
+```bash
+git clone https://github.com/itsluminous/cleanyourtv && cd cleanyourtv
+python3 -m venv tools/venv && tools/venv/bin/pip install -r tools/requirements.txt
+export TV_HOST=<tv ip>                                       # the TV's address on your Wi-Fi
+export LAUNCHER_PACKAGE=com.itsluminous.tvhome               # every script below reads it
+
+tools/venv/bin/python -I tools/tv.py --probe                 # model, Android version, firmware
+tools/disable.sh examples/xiaomi-mi-tv-4a-mooq1/debloat.txt  # the 27 packages, in five batches
+launcher/build-and-install.sh                                # build the launcher, install it, make it Home
+tools/theme.sh themes/mooq1-frosted                          # the dock, six columns, the frosted slate look
+```
+
+`tools/disable.sh` writes its restore record first (`~/.cleanyourtv/`), and `tools/restore.sh examples/xiaomi-mi-tv-4a-mooq1/debloat.txt`
+puts everything back. The list's header says what the TV was found with and what was kept and why; the folder's
+[README](examples/xiaomi-mi-tv-4a-mooq1/README.md) has the same in prose, plus the theme key by key.
+
+Then the companion. Create the three keys once (next section), put them in `work/secrets.env` at the repository
+root, and build:
+
+```bash
+printf 'TRAKT_CLIENT_ID=…\nTMDB_API_KEY=…\nOMDB_API_KEY=…\n' > work/secrets.env   # fill in your keys
+(cd addons/traktshelf && ./gradlew assembleRelease)
+tools/venv/bin/python -I tools/b64push.py addons/traktshelf/app/build/outputs/apk/release/app-release.apk /data/local/tmp/traktshelf.apk
+tools/venv/bin/python -I tools/tv.py 'pm install -r /data/local/tmp/traktshelf.apk; rm -f /data/local/tmp/traktshelf.apk'
+```
+
+Open **Trakt** on Home (its tile, or **All apps** → Trakt shelf), press **Sign in**, and enter the code at
+`trakt.tv/activate` on your phone. After that it syncs on its own, and the launcher's shelf shows its titles.
+
+## Switches added in this fork
+
+All off by default, set from a theme's `config.json`; the Keys table in [`themes/README.md`](themes/README.md#keys)
+has each one's range and detail. `themes/mooq1-frosted/config.json` turns all of them on.
+
+| Key | What it does |
+|---|---|
+| `library_columns` (0, or 2 to 8) | The All apps popup as a vertical grid of compact cards with that many columns, three rows on screen, scrolling down, the edges fenced. `0` keeps upstream's one horizontal row. |
+| `pill_labels_on_focus` | With icon-only pills: the focused round pill grows to show its name (Inputs, the network, Library, Settings) and shrinks back when focus leaves. |
+| `tv_settings_first` | Launcher settings opens with **TV system settings** as its first, focused row. |
+| `settings_panel` | Launcher settings as a side panel over Home in the TV's own Settings style; a row with several values opens a list in the same panel, Back returns. |
+| `shelf_every_row` | Every row behaves like the dock: the focused row scrolls up under the shelf, the rows above slide out, the shelf names the app. Add to dock and Edit dock are left out. Needs `dock_row`. |
+| `hero_feed`, `hero_feed_interval` (3 to 120 s) | The top shelf is the Trakt companion's carousel, one title every N seconds; it owns the shelf while the companion has items, and the focused app's name shows under its tile instead. Up from the dock focuses it, Left/Right move, OK opens the title in the companion, Down or Back goes back. Needs `dock_row`. |
+| `row_gap` (29 to 90 dp) | Space from a tile's bottom to the next row's tile top; `45` is the layout's own, `32` puts the rows about 30% closer. |
+| `hero_height` (50 to 130 %) | The top shelf's height as a percent of the layout's own; below 100 the dock and the rows under it move up and more rows show. The **Hero banner height** row in Launcher settings (Compact 60, Short 80, Normal 100, Tall 120, Theme default) overrides it on the TV. |
+
+## Backup & restore
+
+Launcher settings → **Backup & restore**, always present, no key:
+
+| Row | What it does |
+|---|---|
+| **Back up settings** | Writes every preference, the app order, hidden apps, the dock, module-card approvals and the theme (config and wallpaper) as one JSON file to `/sdcard/Android/data/<package>/files/backup/tvhome-<date>.json`. |
+| **Restore from file** | Lists that folder, newest first; asks, then replaces everything and rebuilds Home. A file you push there over ADB is listed too. |
+| **Import from another launcher** | Only while the same launcher is also installed under its other package name: reads that one's settings through its provider and replaces this one's. This is how a TV moves from `com.gathin.tvhome` to `com.itsluminous.tvhome` without losing its setup. |
+
+The same data over ADB, with `PKG=com.itsluminous.tvhome` (or `com.gathin.tvhome`):
+
+```bash
+tools/venv/bin/python -I tools/tv.py "content read --uri content://$PKG.backup/settings" > backup/launcher-settings.json
+tools/venv/bin/python -I tools/tv.py "content read --uri content://$PKG.backup/backups"          # what the backup folder holds
+tools/venv/bin/python -I tools/b64push.py backup/launcher-settings.json /sdcard/Android/data/$PKG/files/backup/restore-me.json
+```
+
+The provider is read-only and exported without a permission: anything on the TV can read the app order and
+the hidden-apps list, which hold nothing secret, and nothing can write settings through it.
+
+## The Trakt companion
+
+[`addons/traktshelf/`](addons/traktshelf/) is its own Gradle project, never built into the launcher, and the
+launcher keeps its no-network rule: it only reads the companion's content provider.
+
+| Part | How |
+|---|---|
+| **Sign in** | Trakt's device-code flow: a code on the TV, approve at `trakt.tv/activate` on your phone. A public (PKCE) Trakt app, `client_id` only, no client secret anywhere. |
+| **Rows** | Up next, Recommended shows, Recommended movies, Watchlist, Trending (no account needed), Recently watched. Posters and backdrops from TMDB, synopsis, cast and trailer from TMDB, IMDb and Rotten Tomatoes ratings from OMDb, Trakt's own rating. |
+| **Details** | **Play** goes to Stremio (a deep link to the title, the next episode for a show), CloudStream (a search) or NetMirror; a chooser when more than one is installed, or **Default player** in its Settings. **Trailer** opens TizenTube when installed, SmartTube otherwise, and re-sends the link after TizenTube's cold start. Add to or remove from the watchlist, mark watched. |
+| **Settings** | Account, Sync now, Default player, **Carousel rows** (a tick list of the six rows), **Carousel items** (6 to 20), **Watchlist order** (date added, or release date with upcoming titles first), Sign out. |
+| **Sync** | A JobScheduler job every 6 hours while online, after sign-in, and from Settings. |
+| **For the launcher** | `content://com.itsluminous.traktshelf.hero/items`, read-only: the titles `hero_feed` shows, unreleased ones left out. And a module card named **Trakt**, which the launcher asks you about once. |
+
+**Keys.** The build reads them from `work/secrets.env` at the repository root (git-ignored), or from the file
+`-PsecretsFile=<path>` or `SECRETS_FILE=<path>` names. Without a file the app builds with empty keys and its
+sign-in screen says so. To create them:
+
+| Key | Where |
+|---|---|
+| `TRAKT_CLIENT_ID` | [trakt.tv/oauth/applications](https://trakt.tv/oauth/applications) → New application. Give it a name, and a redirect URI it asks for but the device flow never uses (`http://localhost` or `urn:ietf:wg:oauth:2.0:oob` both work). Copy the **Client ID**; the secret is not needed and never leaves the Trakt page. |
+| `TMDB_API_KEY` | [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api): a free account, then the **API Key (v3 auth)**. |
+| `OMDB_API_KEY` | [omdbapi.com/apikey.aspx](https://www.omdbapi.com/apikey.aspx): the free tier (1,000 requests a day), activated from the e-mail it sends. |
+
+More in [`addons/traktshelf/README.md`](addons/traktshelf/README.md).
+
+## What stays on your computer
+
+`work/` (setup notes, the secrets file, build logs), `shots/` (screenshots from the TV), `backup/` (the TV's
+package lists and settings before any change) and `tools/adbkey/` are listed in `.gitignore` and never
+committed. The fork's public copies of the owner's setup are the sanitised `examples/xiaomi-mi-tv-4a-mooq1/`
+and `themes/mooq1-frosted/`: no addresses, network names or keys in them.
+
+---
+
+# Upstream README
+
+Everything below is the [upstream](https://github.com/Gathin23/cleanyourtv) README at the point this fork
+follows, without its badges and star history. Every path and command in it works in this fork
+unchanged; where it says `com.gathin.tvhome`, this fork's launcher is `com.itsluminous.tvhome` once
+`LAUNCHER_PACKAGE` is set.
+
 <p align="center">
   <a href="https://cleanyour.tv"><img src="https://raw.githubusercontent.com/Gathin23/cleanyourtv/main/docs/banner.png" alt="CleanYourTV. Your TV, minus the ads. Strip the bloatware from any Android TV or Google TV over Wi-Fi and replace the ad-filled home screen with a clean launcher that looks like an Apple TV. No root, no cable, nothing uninstalled, and a one-line restore." width="800"></a>
 </p>
 
 <p align="center">
-  Read in: <a href="README.zh-CN.md">简体中文</a> · <a href="README.zh-TW.md">正體中文</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.ja.md">日本語</a> · <a href="README.it.md">Italiano</a> · <a href="README.nl.md">Nederlands</a> · <a href="README.de.md">Deutsch</a> · <a href="README.uk.md">Українська</a> · <a href="README.tr.md">Türkçe</a>
-</p>
-
-<p align="center">
-  <a href="https://github.com/Gathin23/cleanyourtv/stargazers"><img src="https://img.shields.io/github/stars/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&color=cfffcf&labelColor=15181e" alt="Stars"></a>
-  <a href="https://github.com/Gathin23/cleanyourtv/pulls?q=is%3Amerged"><img src="https://img.shields.io/github/issues-search?query=repo%3AGathin23%2Fcleanyourtv%20is%3Apr%20is%3Amerged&style=flat&cacheSeconds=1800&label=merged%20PRs&color=cfffcf&labelColor=15181e" alt="Merged PRs"></a>
-  <a href="https://github.com/Gathin23/cleanyourtv/network/members"><img src="https://img.shields.io/github/forks/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&color=cfffcf&labelColor=15181e" alt="Forks"></a>
-  <a href="https://github.com/Gathin23/cleanyourtv/graphs/contributors"><img src="https://img.shields.io/github/contributors/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&color=cfffcf&labelColor=15181e" alt="Contributors"></a>
-  <a href="https://buymeacoffee.com/gathint"><img src="https://img.shields.io/badge/support-%E2%9D%A4-ff5e8a?style=flat&labelColor=15181e" alt="Support, buy me a coffee"></a>
-  <a href="https://www.producthunt.com/products/cleanyourtv"><img src="https://img.shields.io/badge/Product%20Hunt-upvote%20%E2%96%B2-da552f?style=flat&logo=producthunt&logoColor=white&labelColor=15181e" alt="CleanYourTV on Product Hunt"></a>
-</p>
-
-<p align="center">
-  <a href="https://trendshift.io/repositories/310225"><img src="docs/trending-badge.png" alt="#1 trending repo of the week, Oct 19–25 2026, via trendshift.io" width="360"></a>
-</p>
-
-<p align="center">
-  <a href="docs/PRESS.md"><img src="docs/card.jpg" alt="427 TV models · 111 brands · 31 languages · 572 KB launcher. Featured in TechCrunch, TechRadar, Tom's Guide, Mashable, Android Authority, XDA, FlatpanelsHD, It's FOSS, Phandroid, GIGAZINE, Xataka, WinFuture, Frandroid, Macitynet, Techaeris, TechPP and 396 more: 412 articles from 54 countries. Before: stock Google TV home with a sponsored ad. After: the Clean Your TV launcher." width="800"></a>
+  <a href="docs/PRESS.md"><img src="docs/card.jpg" alt="428 TV models · 111 brands · 31 languages · 572 KB launcher. Featured in TechCrunch, TechRadar, Tom's Guide, Mashable, Android Authority, XDA, FlatpanelsHD, It's FOSS, Phandroid, GIGAZINE, Xataka, WinFuture, Frandroid, Macitynet, Techaeris, TechPP and 396 more: 412 articles from 54 countries. Before: stock Google TV home with a sponsored ad. After: the Clean Your TV launcher." width="800"></a>
 </p>
 
 ## Start here
@@ -131,7 +254,7 @@ most lists, each linked to its models on the website:
 
 | | | | | | |
 |---|---|---|---|---|---|
-| [TCL](https://cleanyour.tv/tvs?q=TCL) · 81 | [Sony](https://cleanyour.tv/tvs?q=Sony) · 47 | [Xiaomi](https://cleanyour.tv/tvs?q=Xiaomi) · 42 | [Philips](https://cleanyour.tv/tvs?q=Philips) · 22 | [Skyworth](https://cleanyour.tv/tvs?q=Skyworth) · 16 | [Hisense](https://cleanyour.tv/tvs?q=Hisense) · 15 |
+| [TCL](https://cleanyour.tv/tvs?q=TCL) · 81 | [Sony](https://cleanyour.tv/tvs?q=Sony) · 47 | [Xiaomi](https://cleanyour.tv/tvs?q=Xiaomi) · 43 | [Philips](https://cleanyour.tv/tvs?q=Philips) · 22 | [Skyworth](https://cleanyour.tv/tvs?q=Skyworth) · 16 | [Hisense](https://cleanyour.tv/tvs?q=Hisense) · 15 |
 | [SHARP](https://cleanyour.tv/tvs?q=SHARP) · 10 | [Amazon Fire TV](https://cleanyour.tv/tvs?q=Amazon%20Fire%20TV) · 9 | [Panasonic](https://cleanyour.tv/tvs?q=Panasonic) · 7 | [BenQ](https://cleanyour.tv/tvs?q=BenQ) · 6 | [Haier](https://cleanyour.tv/tvs?q=Haier) · 6 | [JVC](https://cleanyour.tv/tvs?q=JVC) · 6 |
 | [Acer](https://cleanyour.tv/tvs?q=Acer) · 4 | [OnePlus](https://cleanyour.tv/tvs?q=OnePlus) · 4 | [Thomson](https://cleanyour.tv/tvs?q=Thomson) · 4 | [Toshiba](https://cleanyour.tv/tvs?q=Toshiba) · 4 | [Google](https://cleanyour.tv/tvs?q=Google) · 3 | [Grundig](https://cleanyour.tv/tvs?q=Grundig) · 3 |
 | [Motorola](https://cleanyour.tv/tvs?q=Motorola) · 3 | [Nokia](https://cleanyour.tv/tvs?q=Nokia) · 3 | [NVIDIA Shield](https://cleanyour.tv/tvs?q=NVIDIA%20Shield) · 3 | [onn](https://cleanyour.tv/tvs?q=onn) · 3 | [RCA](https://cleanyour.tv/tvs?q=RCA) · 3 | [Redmi](https://cleanyour.tv/tvs?q=Redmi) · 3 |
@@ -281,7 +404,7 @@ set is in [Troubleshooting](docs/TROUBLESHOOTING.md).
 |---|---|
 | **Configure** | Dock order, hidden apps, Live TV app, 4 to 7 tiles per row, reduced motion. All in [`config.xml`](launcher/app/src/main/res/values/config.xml) |
 | **Settings on the TV** | Hold OK on Settings for launcher settings. Optional `launcher_settings_button` makes a normal click open them directly; TV settings remain on the settings page and their app tile. |
-| **Themes** | Background, wallpaper and layout from a `config.json` pushed over Wi-Fi, no rebuild. Twenty-one ship in [`themes/`](themes/), the built-in `default/` included |
+| **Themes** | Background, wallpaper and layout from a `config.json` pushed over Wi-Fi, no rebuild. Twenty-two ship in [`themes/`](themes/), the built-in `default/` included |
 | **31 languages** | Follows the TV's language, with a fully mirrored right-to-left layout for Hebrew |
 | **App library** | Optional: browse every installed app and add or remove Home shortcuts. See [the app library guide](docs/app-library.md) |
 | **Tile menu** | On by default (`tile_menu`): hold OK on a tile for Move, Remove from Home and App info. Off, holding OK opens App info |
@@ -495,13 +618,6 @@ Contributing through a coding agent? [AGENTS.md](AGENTS.md) gives it the same ru
 The people whose work is in this repo:
 
 <a href="https://github.com/Gathin23/cleanyourtv/graphs/contributors"><img src="https://contrib.rocks/image?repo=Gathin23/cleanyourtv&columns=16&max=400" alt="Contributors"></a>
-
-<details>
-<summary><strong>Star history</strong></summary>
-
-<a href="https://star-history.com/#Gathin23/cleanyourtv&Date"><img src="https://api.star-history.com/svg?repos=Gathin23/cleanyourtv&type=Date" alt="Star history chart" width="640"></a>
-
-</details>
 
 ## Contact
 

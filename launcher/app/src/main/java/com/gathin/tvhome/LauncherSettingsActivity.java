@@ -46,12 +46,25 @@ public final class LauncherSettingsActivity extends Activity {
     private boolean animations;
     private boolean advancedEffects;
 
+    private SettingsPanel panel;
+
+    @Override
+    public void onBackPressed() {
+        if (panel != null && panel.onBack()) return;
+        super.onBackPressed();
+    }
+
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        setContentView(R.layout.activity_launcher_settings);
         choices = getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE);
         Config config = Config.load(this);
+        if (config.settingsPanel) {
+            // settings_panel: the side panel draws itself; the rows below belong to the full-screen page.
+            panel = new SettingsPanel(this, config, choices, this::changed);
+            return;
+        }
+        setContentView(R.layout.activity_launcher_settings);
         View reorderChoice = findViewById(R.id.reorderChoice);
         reorderChoice.setVisibility(config.launcherSettingsButton ? View.VISIBLE : View.GONE);
         reorderChoice.setOnClickListener(v -> {
@@ -157,7 +170,8 @@ public final class LauncherSettingsActivity extends Activity {
             if (!hasOnTvChoices()) return;
             choices.edit().remove("columns").remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
                     .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY)
-                    .remove(Config.DOCK_OPACITY_KEY).remove(Config.CLOCK_FORMAT_KEY).remove(OpenOnStart.KEY).commit();
+                    .remove(Config.DOCK_OPACITY_KEY).remove(Config.CLOCK_FORMAT_KEY).remove(Config.HERO_HEIGHT_KEY)
+                    .remove(OpenOnStart.KEY).commit();
             Config current = Config.load(this);
             columns = current.columns;
             rowsBelowDock = current.rowsBelowDock;
@@ -173,7 +187,21 @@ public final class LauncherSettingsActivity extends Activity {
         findViewById(R.id.tvSettingsChoice).setOnClickListener(v ->
                 open(SystemSettings.intent(this, Settings.ACTION_SETTINGS)));
         refresh();
-        if (config.launcherSettingsButton) reorderChoice.requestFocus();
+        View tvSettingsChoice = findViewById(R.id.tvSettingsChoice);
+        if (config.tvSettingsFirst) {
+            // tv_settings_first: the TV's own settings move from the foot of the page to just under the title and take
+            // the first focus, so a click on Settings still reaches them in one more press.
+            LinearLayout page = (LinearLayout) tvSettingsChoice.getParent();
+            page.removeView(tvSettingsChoice);
+            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) tvSettingsChoice.getLayoutParams();
+            lp.topMargin = Math.round(28 * getResources().getDisplayMetrics().density);
+            page.addView(tvSettingsChoice, 1, lp);
+            if (reorderChoice.getVisibility() == View.VISIBLE) {
+                ((LinearLayout.LayoutParams) reorderChoice.getLayoutParams()).topMargin =
+                        Math.round(8 * getResources().getDisplayMetrics().density);
+            }
+            tvSettingsChoice.requestFocus();
+        } else if (config.launcherSettingsButton) reorderChoice.requestFocus();
         else columnChoices[Math.max(0, Math.min(columns - 4, 3))].requestFocus();
     }
 
@@ -324,7 +352,8 @@ public final class LauncherSettingsActivity extends Activity {
         return choices.contains("columns") || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
                 || choices.contains("animations") || choices.contains("advanced_effects")
                 || choices.contains(Config.WALLPAPER_CHOICE_KEY) || choices.contains(Config.DOCK_OPACITY_KEY)
-                || choices.contains(Config.CLOCK_FORMAT_KEY) || choices.contains(OpenOnStart.KEY);
+                || choices.contains(Config.CLOCK_FORMAT_KEY) || choices.contains(Config.HERO_HEIGHT_KEY)
+                || choices.contains(OpenOnStart.KEY);
     }
 
     private void open(Intent intent) {

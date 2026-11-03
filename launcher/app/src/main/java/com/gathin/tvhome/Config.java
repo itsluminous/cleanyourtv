@@ -44,6 +44,9 @@ final class Config {
     static final String WALLPAPER_CHOICE_KEY = "wallpaper_choice";
     static final String DOCK_OPACITY_KEY = "dock_opacity";
     static final String CLOCK_FORMAT_KEY = "clock_format";
+    /** The shelf height chosen in Launcher settings, percent (hero_height); unset means the theme's key decides. */
+    static final String HERO_HEIGHT_KEY = "hero_height";
+    static final int HERO_HEIGHT_MIN = 50, HERO_HEIGHT_MAX = 130;
     /**
      * Counts the changes made in Launcher settings. Home remembers the count it was built with and rebuilds on
      * resume when it differs, however the settings were left (see MainActivity#onResume).
@@ -160,6 +163,27 @@ final class Config {
     final boolean appLibrarySelection;
     /** OK opens every app in the library; Add to Home stays in the hold menu (library_ok_opens). */
     final boolean libraryOkOpens;
+    /** Columns of the All apps grid, 2 to 8 (library_columns); 0 keeps the one horizontal row. */
+    final int libraryColumns;
+    /** Icon-only top-bar pills grow to show their name while focused (pill_labels_on_focus). */
+    final boolean pillLabelsOnFocus;
+    /** Launcher settings opens with the TV's own settings as its first, focused row (tv_settings_first). */
+    final boolean tvSettingsFirst;
+    /** Launcher settings as a side panel in the TV settings style, the gear pill kept (settings_panel). */
+    final boolean settingsPanel;
+    /** Every row behaves like the dock: the focused row scrolls up under the shelf, which names its app (shelf_every_row). */
+    final boolean shelfEveryRow;
+    /** The top shelf cycles the Trakt companion's items while the dock is at rest (hero_feed), every heroFeedInterval seconds. */
+    final boolean heroFeed;
+    final int heroFeedInterval;
+    /** Tile bottom to the next row's tile top, in dp (row_gap); AppAdapter.ITEM_EXTRA_DP is the layout's own 45. */
+    final int rowGap;
+    /**
+     * Height of the top shelf (the space above the dock line) as a percent of the layout's own, 50 to 130 (hero_height);
+     * the dock and the rows under it move up with a shorter shelf, so more rows show. The carousel gives up synopsis
+     * lines, chips and title size to fit.
+     */
+    final int heroHeight;
     /** Icon on a card tinted from that icon, instead of the app's banner (config.xml uniform_tiles). */
     final boolean uniformTiles;
     /** Background colour behind everything, #RRGGBB; black unless a theme says otherwise. */
@@ -284,7 +308,7 @@ final class Config {
                    String sourcePanelExtra, boolean coocaaSources, String inputAction, List<String> inputSources,
                    String inputUriScheme, int columns, int rowsBelowDock, boolean animations, boolean advancedEffects,
                    boolean shamsiDate, String greetingName, boolean moduleCards, boolean reducedMotion, boolean bootToLiveTv, boolean openOnStartChoice, boolean dockTitle, boolean dockRow, boolean topMenu, boolean launcherSettingsButton, boolean reorderButton, boolean showNetworkPill, boolean showInputsPill, boolean iconOnlyButtons, boolean iconOnlyInputs, boolean libraryButton, boolean showLibraryPill, int wifiLabelWidth, boolean alwaysShowNames, boolean wallpaperTrueColor, boolean focusOvershoot, String vpnApp,
-                   boolean showHomeSettingsShortcut, boolean showStats, String gameDay, boolean appLibrary, boolean appLibrarySelection, boolean libraryOkOpens, boolean uniformTiles, int backgroundColor, int skyIntensity,
+                   boolean showHomeSettingsShortcut, boolean showStats, String gameDay, boolean appLibrary, boolean appLibrarySelection, boolean libraryOkOpens, int libraryColumns, boolean pillLabelsOnFocus, boolean tvSettingsFirst, boolean settingsPanel, boolean shelfEveryRow, boolean heroFeed, int heroFeedInterval, int rowGap, int heroHeight, boolean uniformTiles, int backgroundColor, int skyIntensity,
                    int[] settingsKeycodes, boolean settingsKeyPanel, boolean restoreKeyServices, boolean wallpaperEnabled, File wallpaper, List<File> wallpapers,
                    int wallpaperRotationMinutes, int wallpaperDim, int dockOpacity, String wallpaperOrder, boolean overlayApplied,
                    Festival festival, int[] inputKeycodes, List<String> appKeys, String stockHomeRedirect,
@@ -357,6 +381,15 @@ final class Config {
         this.appLibrary = appLibrary;
         this.appLibrarySelection = appLibrarySelection;
         this.libraryOkOpens = libraryOkOpens;
+        this.libraryColumns = libraryColumns;
+        this.pillLabelsOnFocus = pillLabelsOnFocus;
+        this.tvSettingsFirst = tvSettingsFirst;
+        this.settingsPanel = settingsPanel;
+        this.shelfEveryRow = shelfEveryRow;
+        this.heroFeed = heroFeed;
+        this.heroFeedInterval = heroFeedInterval;
+        this.rowGap = rowGap;
+        this.heroHeight = heroHeight;
         this.uniformTiles = uniformTiles;
         this.backgroundColor = backgroundColor;
         this.skyIntensity = skyIntensity;
@@ -490,6 +523,15 @@ final class Config {
         boolean library = res.getBoolean(R.bool.app_library);
         boolean librarySelection = res.getBoolean(R.bool.app_library_selection);
         boolean libraryOkOpens = res.getBoolean(R.bool.library_ok_opens);
+        int libraryColumns = res.getInteger(R.integer.library_columns);
+        boolean pillLabelsOnFocus = res.getBoolean(R.bool.pill_labels_on_focus);
+        boolean tvSettingsFirst = res.getBoolean(R.bool.tv_settings_first);
+        boolean settingsPanel = res.getBoolean(R.bool.settings_panel);
+        boolean shelfEveryRow = res.getBoolean(R.bool.shelf_every_row);
+        boolean heroFeed = res.getBoolean(R.bool.hero_feed);
+        int heroFeedInterval = res.getInteger(R.integer.hero_feed_interval);
+        int rowGap = res.getInteger(R.integer.row_gap);
+        int heroHeight = res.getInteger(R.integer.hero_height);
         boolean uniformTiles = res.getBoolean(R.bool.uniform_tiles);
         int background = 0xFF000000;
         int skyIntensity = res.getInteger(R.integer.sky_intensity);
@@ -604,6 +646,15 @@ final class Config {
             library = bool(json, "app_library", library);
             librarySelection = bool(json, "app_library_selection", librarySelection);
             libraryOkOpens = bool(json, "library_ok_opens", libraryOkOpens);
+            libraryColumns = integer(json, "library_columns", libraryColumns, 0, 8);
+            pillLabelsOnFocus = bool(json, "pill_labels_on_focus", pillLabelsOnFocus);
+            tvSettingsFirst = bool(json, "tv_settings_first", tvSettingsFirst);
+            settingsPanel = bool(json, "settings_panel", settingsPanel);
+            shelfEveryRow = bool(json, "shelf_every_row", shelfEveryRow);
+            heroFeed = bool(json, "hero_feed", heroFeed);
+            heroFeedInterval = integer(json, "hero_feed_interval", heroFeedInterval, 3, 120);
+            rowGap = integer(json, "row_gap", rowGap, 29, 90);  // 29 is AppAdapter.MIN_ROW_GAP_DP
+            heroHeight = integer(json, "hero_height", heroHeight, 50, 130);  // HERO_HEIGHT_MIN, HERO_HEIGHT_MAX
             uniformTiles = bool(json, "uniform_tiles", uniformTiles);
             background = color(json, "background_color", background);
             skyIntensity = integer(json, "sky_intensity", skyIntensity, 0, 100);
@@ -664,6 +715,7 @@ final class Config {
         if (chosenColumns >= 4 && chosenColumns <= 7) columns = chosenColumns;
         int chosenRows = choices.getInt(ROWS_BELOW_DOCK_KEY, rowsBelow);
         if (chosenRows >= 0 && chosenRows <= 3) rowsBelow = chosenRows;
+        heroHeight = chosenHeroHeight(choices.getInt(HERO_HEIGHT_KEY, -1), heroHeight);
         animations = choices.getBoolean("animations", animations);
         advancedEffects = choices.getBoolean("advanced_effects", advancedEffects);
         File wallpaper = dir != null ? new File(dir, WALLPAPER_NAME) : null;
@@ -706,7 +758,7 @@ final class Config {
                 Math.max(0, rowsBelow), animations, advancedEffects, shamsi, greetingName, moduleCards, reducedMotion, bootToLiveTv,
                 openOnStartChoice, dockTitle, dockRow, topMenu, launcherSettingsButton, reorderButton, showNetworkPill, showInputsPill,
                 iconOnlyButtons, iconOnlyInputs, libraryButton, showLibraryPill, wifiLabelWidth, alwaysShowNames, wallpaperTrueColor, focusOvershoot,
-                vpn, homeSettings, showStats, gameDay, library, librarySelection, libraryOkOpens, uniformTiles, background,
+                vpn, homeSettings, showStats, gameDay, library, librarySelection, libraryOkOpens, libraryColumns, pillLabelsOnFocus, tvSettingsFirst, settingsPanel, shelfEveryRow, heroFeed, heroFeedInterval, rowGap, heroHeight, uniformTiles, background,
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, restoreKeyServices, wallpaperEnabled, wallpaper,
                 wallpapers, rotationMinutes, wallpaperDim, dockOpacity, wallpaperOrder, applied, festival, inputKeycodes, appKeys, stockHomeRedirect,
                 json == null ? Collections.emptyList() : raceCalendar(json), cinematic, ambientGlow, appGlow, fadeRows,
@@ -759,18 +811,36 @@ final class Config {
             SharedPreferences.Editor editor = choices.edit();
             if (!"absent".equals(token)) editor.remove("columns").remove("animations")
                     .remove("advanced_effects").remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY)
-                    .remove(DOCK_OPACITY_KEY).remove(CLOCK_FORMAT_KEY);
+                    .remove(DOCK_OPACITY_KEY).remove(CLOCK_FORMAT_KEY).remove(HERO_HEIGHT_KEY);
             editor.putString(THEME_SIGNATURE_KEY, signature).commit();
         } else if (!seen.equals(signature)) {
             choices.edit().remove("columns").remove("animations").remove("advanced_effects")
                     .remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY).remove(DOCK_OPACITY_KEY)
-                    .remove(CLOCK_FORMAT_KEY).putString(THEME_SIGNATURE_KEY, signature).commit();
+                    .remove(CLOCK_FORMAT_KEY).remove(HERO_HEIGHT_KEY).putString(THEME_SIGNATURE_KEY, signature).commit();
         }
+    }
+
+    /**
+     * backup_restore: Backup.restore has just written the theme files, with today's stamp. Record their signature
+     * as seen, so the next load does not take the write for a theme push and clear the layout choices that were
+     * restored with them.
+     */
+    static void adoptThemeFiles(Context ctx) {
+        File dir = dir(ctx);
+        File config = dir == null ? null : new File(dir, FILE_NAME);
+        File revision = dir == null ? null : new File(dir, THEME_REVISION_NAME);
+        ctx.getSharedPreferences(SETTINGS_NAME, Context.MODE_PRIVATE).edit()
+                .putString(THEME_SIGNATURE_KEY, fileStamp(config) + ":" + revisionToken(revision)).commit();
     }
 
     /** The dock band opacity chosen in Launcher settings, or the theme's when none (or an out-of-range one) is saved. */
     static int chosenDockOpacity(int chosen, int theme) {
         return chosen >= 30 && chosen <= 100 ? chosen : theme;
+    }
+
+    /** The shelf height chosen in Launcher settings (hero_height), or the theme's when none, or an out-of-range one, is saved. */
+    static int chosenHeroHeight(int chosen, int theme) {
+        return chosen >= HERO_HEIGHT_MIN && chosen <= HERO_HEIGHT_MAX ? chosen : theme;
     }
 
     private static String fileStamp(File file) {

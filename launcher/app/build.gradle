@@ -10,7 +10,12 @@ android {
         // Opt-in identity for firmware with a package-name HOME allowlist.
         // Xiaomi: docs/devices/xiaomi-mitv-aetp0-dofus.md (com.ts.launcher).
         // ColorOS TV: docs/devices/oppo-k9-55-oppocnm632.md (com.oneplus.tv.launcher2).
-        applicationId providers.gradleProperty('launcherApplicationId').getOrElse('com.gathin.tvhome')
+        // -PlauncherApplicationId=<id>, or LAUNCHER_PACKAGE=<id> in the environment (what the install and theme
+        // scripts read too). The Java package stays com.gathin.tvhome whatever the id, so upstream merges stay easy;
+        // only the manifest's ${applicationId} and getPackageName() change.
+        applicationId providers.gradleProperty('launcherApplicationId')
+                .orElse(providers.environmentVariable('LAUNCHER_PACKAGE'))
+                .getOrElse('com.gathin.tvhome')
         minSdk 26
         targetSdk 34
         versionCode 12

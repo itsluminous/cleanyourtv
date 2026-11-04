@@ -14,6 +14,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Random;
 import java.util.Set;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -64,6 +66,14 @@ final class Feed {
 
     final LinkedHashMap<String, Row> rows = new LinkedHashMap<>();
     long syncedAt;
+    /**
+     * Every title the account has watched, as Item keys (movie:id, show:id; a show with one episode seen counts), from
+     * Trakt's /sync/watched at the last sync. Trending and the recommendations leave these out (hideWatched); Up
+     * Next, the watchlist and Recently watched are untouched.
+     */
+    final Set<String> watched = new HashSet<>();
+    /** The rows that hide watched titles. */
+    static final String[] HIDE_WATCHED_ROWS = {TRENDING, REC_SHOWS, REC_MOVIES};
 
     /** The watchlist row a title belongs to, by its kind. */
     static String watchlistRow(String kind) {
@@ -128,6 +138,8 @@ final class Feed {
             JSONObject j = new JSONObject(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
             f.syncedAt = j.optLong("synced_at");
             f.lastError = Item.opt(j, "last_error");
+            JSONArray watched = j.optJSONArray("watched");
+            if (watched != null) for (int i = 0; i < watched.length(); i++) f.watched.add(watched.getString(i));
             JSONObject rows = j.optJSONObject("rows");
             if (rows != null) {
                 // A feed written before the split has one "watchlist" row: its shows and movies go to the two rows.
@@ -154,7 +166,25 @@ final class Feed {
             Log.w(TAG, "feed.json unreadable: " + e.getMessage());
         }
         f.orderWatchlist(c);
+        f.hideWatched();   // a sync already did; a title marked watched since, and synced, goes too
         return f;
+    }
+
+    /**
+     * Takes every watched title out of Trending and the two recommendation rows (HIDE_WATCHED_ROWS), for Home and the
+     * provider alike; returns the titles that went. Nothing happens without a watched set (not signed in, or an old feed).
+     */
+    List<String> hideWatched() {
+        List<String> gone = new ArrayList<>();
+        if (watched.isEmpty()) return gone;
+        for (String key : HIDE_WATCHED_ROWS) {
+            Row r = rows.get(key);
+            if (r == null) continue;
+            for (int i = r.items.size() - 1; i >= 0; i--) {
+                if (watched.contains(r.items.get(i).key())) gone.add(r.items.remove(i).title);
+            }
+        }
+        return gone;
     }
 
     /**
@@ -196,7 +226,9 @@ final class Feed {
                 for (Item it : r.items) a.put(it.toJson());
                 rows.put(r.key, a);
             }
-            JSONObject j = new JSONObject().put("synced_at", syncedAt).put("last_error", lastError).put("rows", rows);
+            JSONArray seen = new JSONArray();
+            for (String key : watched) seen.put(key);
+            JSONObject j = new JSONObject().put("synced_at", syncedAt).put("last_error", lastError).put("rows", rows).put("watched", seen);
             writeAtomic(file(c), j.toString());
         } catch (IOException | JSONException e) {
             Log.w(TAG, "feed.json not saved: " + e.getMessage());
@@ -219,39 +251,62 @@ final class Feed {
         return null;
     }
 
-    /** Each row's share of the carousel, before the leftover is filled in row order (heroItems); the old watchlist's 2 is split. */
-    private static final int[] HERO_WEIGHT = {4, 3, 3, 1, 1, 3, 2};
-
     /**
-     * Items for the launcher's carousel: Settings' rows (Prefs.heroRows) in row order, Up Next first, each with its
-     * share of max by weight, then the leftover in row order; only those with a backdrop on disk, each item once.
-     * Titles not out yet (Item.upcoming: a future release day, or an Up Next episode that has not aired) are left
-     * out of every row here; Home still shows them, since the watchlist is the viewer's own list.
+     * Items for the launcher's carousel: the Up Next episode of the show watched most recently leads (Up Next is in
+     * last_watched_at order, so its first eligible item), whatever Settings' rows say, and the rest is a true shuffle
+     * of the pool the ticked rows (Prefs.heroRows) make, no row grouping. The pool takes every eligible item of each
+     * ticked row, capped at ceil(max / 2) a row so no row floods the carousel, each title once; the shuffle is seeded
+     * with the sync time (syncedAt), so the order holds between queries and changes with every sync, and the
+     * provider's rank is that order. Eligible: a backdrop on disk and not upcoming (Item.upcoming: a future release
+     * day, or an Up Next episode that has not aired); Home still shows those, since the watchlist is the viewer's own.
      */
     List<Item> heroItems(Context c, int max) {
         Set<String> enabled = Prefs.heroRows(c);
-        int weightSum = 0;
-        for (int i = 0; i < ROW_ORDER.length; i++) if (enabled.contains(ROW_ORDER[i])) weightSum += HERO_WEIGHT[i];
         List<Item> out = new ArrayList<>();
-        if (weightSum == 0) return out;
-        Map<String, Boolean> seen = new HashMap<>();
+        if (max <= 0) return out;
         File img = Images.dir(c);
-        for (int pass = 0; pass < 2 && out.size() < max; pass++) {
-            for (int i = 0; i < ROW_ORDER.length; i++) {
-                Row r = rows.get(ROW_ORDER[i]);
-                if (r == null || !enabled.contains(ROW_ORDER[i])) continue;
-                int take = pass == 0 ? Math.max(1, Math.round(max * HERO_WEIGHT[i] / (float) weightSum)) : Integer.MAX_VALUE;
-                for (Item it : r.items) {
-                    if (take <= 0 || out.size() >= max) break;
-                    if (seen.containsKey(it.key()) || it.upcoming() || it.backdropUrl == null
-                            || !new File(img, it.backdropFile()).isFile()) continue;
-                    seen.put(it.key(), Boolean.TRUE);
-                    out.add(it);
-                    take--;
-                }
+        Set<String> seen = new HashSet<>();
+        Row upNext = rows.get(UP_NEXT);
+        if (upNext != null) {
+            for (Item it : upNext.items) {
+                if (!eligible(it, img)) continue;
+                seen.add(it.key());
+                out.add(it);
+                break;
             }
         }
+        List<Item> pool = new ArrayList<>();
+        int cap = (max + 1) / 2;
+        for (String key : ROW_ORDER) {
+            Row r = rows.get(key);
+            if (r == null || !enabled.contains(key)) continue;
+            int taken = 0;
+            for (Item it : r.items) {
+                if (taken >= cap) break;
+                if (seen.contains(it.key()) || !eligible(it, img)) continue;
+                seen.add(it.key());
+                pool.add(it);
+                taken++;
+            }
+        }
+        shuffle(pool, syncedAt);
+        for (Item it : pool) {
+            if (out.size() >= max) break;
+            out.add(it);
+        }
+        Log.i(TAG, "carousel: " + out.size() + " of " + max + " from " + enabled + ", lead "
+                + (out.isEmpty() || !UP_NEXT.equals(out.get(0).sourceRow) ? "none" : out.get(0).title + " " + out.get(0).nextEpisode)
+                + ", pool " + pool.size() + ", seed " + syncedAt);
         return out;
+    }
+
+    private static boolean eligible(Item it, File img) {
+        return !it.upcoming() && it.backdropUrl != null && new File(img, it.backdropFile()).isFile();
+    }
+
+    /** Fisher-Yates with java.util.Random on the seed: the same seed, the same order. */
+    static <T> void shuffle(List<T> items, long seed) {
+        Collections.shuffle(items, new Random(seed));
     }
 
     // ---- metadata cache ---------------------------------------------------------------------------

@@ -9,8 +9,10 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** Trakt API v2 reads and the three writes (watchlist add/remove, mark watched). */
 final class Trakt {
@@ -115,15 +117,45 @@ final class Trakt {
     }
 
     /**
-     * Up Next: the shows watched most recently that still have an aired, unwatched episode. One progress call per
-     * show, so the list is capped: maxShows watched shows are looked at, limit are kept.
+     * Every show the account has watched an episode of, newest last_watched_at first: Up Next walks it, and its
+     * ids are the shows hidden from Trending and the recommendations (watchedKeys).
      */
-    List<Item> upNext(int maxShows, int limit) throws IOException, JSONException {
+    List<JSONObject> watchedShows() throws IOException, JSONException {
         JSONArray watched = getArray("/sync/watched/shows?extended=full,noseasons", true);
-        // Newest first.
         List<JSONObject> entries = new ArrayList<>();
         for (int i = 0; i < watched.length(); i++) entries.add(watched.getJSONObject(i));
         entries.sort((x, y) -> y.optString("last_watched_at", "").compareTo(x.optString("last_watched_at", "")));
+        return entries;
+    }
+
+    /** Every movie the account has watched, as Item keys (movie:trakt id); no extended data, so the call is cheap. */
+    Set<String> watchedMovieKeys() throws IOException, JSONException {
+        JSONArray watched = getArray("/sync/watched/movies", true);
+        Set<String> out = new HashSet<>();
+        for (int i = 0; i < watched.length(); i++) {
+            JSONObject movie = watched.getJSONObject(i).optJSONObject("movie");
+            long id = movie == null || movie.optJSONObject("ids") == null ? 0 : movie.optJSONObject("ids").optLong("trakt");
+            if (id > 0) out.add(Item.MOVIE + ":" + id);
+        }
+        return out;
+    }
+
+    /** The keys (show:trakt id) of watchedShows' entries. */
+    static Set<String> watchedShowKeys(List<JSONObject> entries) {
+        Set<String> out = new HashSet<>();
+        for (JSONObject e : entries) {
+            JSONObject show = e.optJSONObject("show");
+            long id = show == null || show.optJSONObject("ids") == null ? 0 : show.optJSONObject("ids").optLong("trakt");
+            if (id > 0) out.add(Item.SHOW + ":" + id);
+        }
+        return out;
+    }
+
+    /**
+     * Up Next: the shows watched most recently (watchedShows' order) that still have an aired, unwatched episode.
+     * One progress call per show, so the list is capped: maxShows watched shows are looked at, limit are kept.
+     */
+    List<Item> upNext(List<JSONObject> entries, int maxShows, int limit) throws IOException, JSONException {
         List<Item> out = new ArrayList<>();
         int looked = 0;
         for (JSONObject e : entries) {

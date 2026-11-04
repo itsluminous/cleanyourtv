@@ -135,8 +135,14 @@ final class Sync {
                     if (name != null) auth.setUsername(name);
                 }
                 progress = c.getString(R.string.sync_up_next);
+                // The watched shows serve Up Next and, with the watched movies, the set Trending and the
+                // recommendations leave out (Feed.hideWatched): one episode seen counts the show as seen.
+                List<org.json.JSONObject> watchedShows = trakt.watchedShows();
+                feed.watched.clear();
+                feed.watched.addAll(Trakt.watchedShowKeys(watchedShows));
+                feed.watched.addAll(trakt.watchedMovieKeys());
                 Feed.Row upNext = new Feed.Row(Feed.UP_NEXT);
-                upNext.items.addAll(trakt.upNext(14, 10));
+                upNext.items.addAll(trakt.upNext(watchedShows, 14, 10));
                 feed.rows.put(Feed.UP_NEXT, upNext);
                 progress = c.getString(R.string.sync_recommendations);
                 Feed.Row recShows = new Feed.Row(Feed.REC_SHOWS);
@@ -167,8 +173,12 @@ final class Sync {
                 for (String key : new String[]{Feed.UP_NEXT, Feed.REC_SHOWS, Feed.REC_MOVIES, Feed.WATCHLIST_SHOWS, Feed.WATCHLIST_MOVIES, Feed.HISTORY}) {
                     if (!feed.rows.containsKey(key) && old.rows.containsKey(key)) feed.rows.put(key, old.rows.get(key));
                 }
+                if (feed.watched.isEmpty()) feed.watched.addAll(old.watched);
             }
         }
+        // Titles already seen leave Trending and the recommendations before they cost a TMDB or OMDb call.
+        List<String> hidden = feed.hideWatched();
+        if (!hidden.isEmpty()) Log.i(TAG, "excluded " + hidden.size() + " watched from trending/recommended: " + hidden);
         // Row order as Home shows it.
         java.util.LinkedHashMap<String, Feed.Row> ordered = new java.util.LinkedHashMap<>();
         for (String key : Feed.ROW_ORDER) if (feed.rows.containsKey(key)) ordered.put(key, feed.rows.get(key));

@@ -69,6 +69,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.PopupWindow;
+import android.widget.TextClock;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -651,6 +652,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             lunarDate.setTextSize(11f);
             date.setPadding(0, (int) (4 * density), 0, 0);
         }
+        // date_two_lines: not with the extra date lines or the date under the clock, which would push the header down.
+        if (cfg.dateTwoLines && !shamsi && !lunar && !cfg.dateBelowClock) dateOnTwoLines();
         vpnApp = cfg.vpnApp;
         vpnPill = cfg.vpnPill && !cfg.topMenu;
         btnVpn = findViewById(R.id.btnVpn);
@@ -3153,6 +3156,37 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 + (clock.getHeight() - buttons.getHeight()) / 2f);
         clockRow.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> align.run());
         buttons.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> align.run());
+    }
+
+    // ---- date_two_lines --------------------------------------------------------------------------
+
+    /**
+     * date_two_lines: the day of the week over the day and month, each in the TV's language's own pattern
+     * (DateFormat.getBestDateTimePattern, so "4 NOVEMBER" here and "NOVEMBER 4" in the US), in the date's caps and
+     * tracking. The block is centred on the clock by translation, whatever the header's own alignment (the Hebrew
+     * header keeps its bottom line), so the header's height does not move: two 14sp lines are shorter than the clock.
+     */
+    private void dateOnTwoLines() {
+        TextClock date = findViewById(R.id.date);
+        Locale locale = getResources().getConfiguration().getLocales().get(0);
+        String format = android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEE") + "\n"
+                + android.text.format.DateFormat.getBestDateTimePattern(locale, "d MMMM");
+        date.setSingleLine(false);
+        date.setMaxLines(2);
+        date.setLineSpacing(6 * density, 1f);
+        date.setFormat12Hour(format);
+        date.setFormat24Hour(format);
+        View column = (View) date.getParent();
+        View clock = findViewById(R.id.clock);
+        ViewGroup row = (ViewGroup) column.getParent();
+        View.OnLayoutChangeListener centre = (v, l, t, r, b, ol, ot, or, ob) -> {
+            Rect c = tileRect;
+            c.set(0, 0, clock.getWidth(), clock.getHeight());
+            row.offsetDescendantRectToMyCoords(clock, c);
+            column.setTranslationY(c.exactCenterY() - (column.getTop() + column.getHeight() / 2f));
+        };
+        column.addOnLayoutChangeListener(centre);
+        clock.addOnLayoutChangeListener(centre);
     }
 
     /** The first top-bar button after Inputs that is shown, in bar order (top_bar_apps, the network pill, ...); Settings is always there. */

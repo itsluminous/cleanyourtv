@@ -476,6 +476,13 @@
          name alone needs less room. A choice made in Launcher settings (Hero banner height) overrides this; a theme
          can set "hero_height": 60 for a compact shelf. -->
     <integer name="hero_height">0</integer>
+    <!-- date_two_lines: the date beside the clock on two lines, the day of the week over the day and month
+         ("WEDNESDAY" over "4 NOVEMBER", each from the TV's language's own date patterns), the block centred on the
+         clock's height; the line between the clock and the date stays, and the header keeps its height (the two
+         14sp lines are shorter than the 52sp clock). Off, the date is the one line date_format gives. Not applied
+         alongside shamsi_date, lunar_date or date_below_clock, whose extra lines would push the header down. A
+         theme can set "date_two_lines": true. -->
+    <bool name="date_two_lines">false</bool>
 
     <!-- Apps pre-seeded into the App library's "added" set at startup (config.xml library_apps, or a theme's
          config.json). They show on Home as if the owner had added them in the App library UI, and stay

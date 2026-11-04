@@ -578,6 +578,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         cinematicWhiteFocus = cfg.cinematicWhiteFocus;
         heroArtAlpha = cfg.cinematicArt / 100f;
         if (cinematic) setUpCinematicShelf(cfg.cinematicScrim);
+        else heroName.setTextSize(TypedValue.COMPLEX_UNIT_SP, shelfTitleSp(48f));   // the layout's 48sp, scaled with hero_height
+        // The meta line and the dots keep their distance from the name in proportion too (ShelfScale).
+        shelfMargin(heroMeta, 12);
+        shelfMargin(heroDots, 16);
         if (cfg.heroFeed && dockRow && cfg.dockTitle) setUpHeroFeed(cfg);
         // dock_title false: the name above the dock (and the cinematic lines under it) never shows; the glow
         // still follows the dock.
@@ -774,6 +778,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // (the carousel's full height or the measured shelf, plus the 40dp gap) at hero_height, and the rows fill
             // downward from there; those that do not fit scroll up on Down.
             if (uniformRows) want = UniformRows.restingLinePx(UniformRows.shelfRoomPx(hero.getMeasuredHeight(), carouselRoom, density), heroHeightPct);
+            // hero_height under 100: the line is that share of the room, but the shelf's text only scales to two
+            // thirds (ShelfScale) and the shelf never rises past the header (SHELF_MIN_TOP_DP), so the line stays at
+            // least the shelf's measured height plus its gap under that top, whatever the percent asks: the dots
+            // never land on the first row. At 100 the shelf fits in its room and this changes nothing.
+            int shelfGap = shelfGapPx(carouselShowing);
+            if (MainActivity.this.dockRow && !singleRow) {
+                want = Math.max(want, ShelfScale.floorPx(Math.round(SHELF_MIN_TOP_DP * density), hero.getMeasuredHeight(), shelfGap, gridTopInRoot()));
+            }
             // A single row never shows the names under its tiles (the title above the row names the app), so the
             // 7dp gap and 22dp label item_app.xml keeps for them would only lift the row: sit it that much lower.
             if (singleRow && !cfg.alwaysShowNames) want += (int) (29 * density);
@@ -2024,7 +2036,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int color = adapter.ambientColorAt(position);
         // A short shelf (hero_height) can leave less room than the name needs: it then stays under the header rather
         // than over the clock, and the 40dp gap above the dock absorbs the difference.
-        float y = Math.max(SHELF_MIN_TOP_DP * density, dockTopInRoot - 14 * density - 26 * density - hero.getHeight());
+        float y = Math.max(SHELF_MIN_TOP_DP * density, dockTopInRoot - shelfGapPx(false) - hero.getHeight());
         boolean changed = !label.contentEquals(heroName.getText());
         if (cinematic && heroArtAlpha > 0f) showHeroArt(position);
 
@@ -2234,8 +2246,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         lp.setMarginStart((int) (68 * density) - pad);
         hero.setLayoutParams(lp);
         fitCarouselTitle();
-        topMargin(heroMeta, 6);
-        topMargin(heroDots, 10);
+        shelfMargin(heroMeta, 6);
+        shelfMargin(heroDots, 10);
         heroMeta.setVisibility(View.VISIBLE);
         heroSynopsis.setVisibility(View.VISIBLE);
         heroChips.setVisibility(View.VISIBLE);
@@ -2330,14 +2342,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Everything on first (an earlier item may have given some of it up), then hero_height: a short shelf starts
         // with fewer lines (two at 80 and below, one at 60 and below), and gives up the chips before the last line.
         heroSynopsis.setVisibility(View.VISIBLE);
-        heroChips.setVisibility(View.VISIBLE);
-        int lines = heroHeightPct <= 60 ? 1 : heroHeightPct <= 80 ? 2 : 3;
+        heroChips.setVisibility(ShelfScale.chipsShown(heroHeightPct) ? View.VISIBLE : View.GONE);
+        int lines = ShelfScale.synopsisLines(heroHeightPct);
         heroSynopsis.setMaxLines(lines);
         float y;
+        int gap = shelfGapPx(true);
         while (true) {
             hero.measure(View.MeasureSpec.makeMeasureSpec(root.getWidth(), View.MeasureSpec.AT_MOST),
                     View.MeasureSpec.makeMeasureSpec(root.getHeight(), View.MeasureSpec.AT_MOST));
-            y = lastDockTop - 12 * density - hero.getMeasuredHeight();
+            y = lastDockTop - gap - hero.getMeasuredHeight();
             if (y >= minTop) break;
             if (lines > 1) heroSynopsis.setMaxLines(--lines);
             else if (heroChips.getVisibility() == View.VISIBLE) heroChips.setVisibility(View.GONE);
@@ -2393,9 +2406,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** The shelf never reaches up into the header: 26dp of padding and the 52sp clock end about 90dp down. */
     private static final float SHELF_MIN_TOP_DP = 90f;
 
-    /** The shelf's title size for this hero_height: the layout's own, or five sixths of it (36sp to 30sp) at 60 and below. */
+    /** The shelf's title size for this hero_height: the layout's own at 100, two thirds of it at 60 (ShelfScale). */
     private float shelfTitleSp(float base) {
-        return heroHeightPct <= 60 ? Math.round(base * 30f / 36f) : base;
+        return ShelfScale.textSp(base, heroHeightPct);
+    }
+
+    /**
+     * The room the shelf keeps above the focused row's tiles, px: 40dp under the app's name (14 plus the 26 of the
+     * dock layout), 12dp under the carousel's dots, both scaled with hero_height and never under 8dp.
+     */
+    private int shelfGapPx(boolean carousel) {
+        return ShelfScale.spacingPx(carousel ? 12f : 40f, 8f, heroHeightPct, density);
+    }
+
+    /** The grid's top in the root's px: where its padding, the shelf's resting line, is measured from. */
+    private int gridTopInRoot() {
+        Rect r = tileRect;
+        r.set(0, 0, 0, 0);
+        root.offsetDescendantRectToMyCoords(grid, r);
+        return r.top;
     }
 
     /**
@@ -2405,10 +2434,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      */
     private void fitFeedArt(int want) {
         if (heroFeedArt == null || heroHeightPct == 100) return;
-        Rect r = tileRect;
-        r.set(0, 0, 0, 0);
-        root.offsetDescendantRectToMyCoords(grid, r);
-        int artH = r.top + want + Math.round(6 * density);
+        int artH = gridTopInRoot() + want + Math.round(6 * density);
         if (artH <= 0) return;
         ViewGroup.LayoutParams lp = heroFeedArt.getLayoutParams();
         int artW = Math.round(artH * FEED_ART_W_DP / FEED_ART_H_DP);
@@ -2456,8 +2482,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         lp.setMarginStart((int) (68 * density));
         hero.setLayoutParams(lp);
         unfitCarouselTitle(shelfTitleSp(cinematic ? 68f : 48f));
-        topMargin(heroMeta, 12);
-        topMargin(heroDots, 16);
+        shelfMargin(heroMeta, 12);
+        shelfMargin(heroDots, 16);
         heroSynopsis.setVisibility(View.GONE);
         heroChips.setVisibility(View.GONE);
         heroChips.removeAllViews();
@@ -2479,7 +2505,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (!Float.isNaN(lastDockTop)) {
                 hero.measure(View.MeasureSpec.makeMeasureSpec(root.getWidth(), View.MeasureSpec.AT_MOST),
                         View.MeasureSpec.makeMeasureSpec(root.getHeight(), View.MeasureSpec.AT_MOST));
-                hero.setY(Math.max(SHELF_MIN_TOP_DP * density, lastDockTop - 14 * density - 26 * density - hero.getMeasuredHeight()));
+                hero.setY(Math.max(SHELF_MIN_TOP_DP * density, lastDockTop - shelfGapPx(false) - hero.getMeasuredHeight()));
             }
         }
         if (hadFocus && resumed) focusTile(lastFocused);
@@ -2532,6 +2558,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void topMargin(View v, int dp) {
         ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
         lp.topMargin = (int) (dp * density);
+        v.setLayoutParams(lp);
+    }
+
+    /** A shelf line's margin above it, the layout's dp scaled with hero_height (ShelfScale), never under 4dp. */
+    private void shelfMargin(View v, int dp) {
+        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+        lp.topMargin = ShelfScale.spacingPx(dp, 4f, heroHeightPct, density);
         v.setLayoutParams(lp);
     }
 

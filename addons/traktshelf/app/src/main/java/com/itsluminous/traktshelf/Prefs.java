@@ -35,12 +35,17 @@ final class Prefs {
         return s;
     }
 
-    /** The rows the carousel draws from, in Feed.ROW_ORDER. */
+    /**
+     * The rows the carousel draws from, in Feed.ROW_ORDER. A set saved before the watchlist split names one
+     * "watchlist" row: that tick stands for both Watchlist · Shows and Watchlist · Movies until the next change
+     * saves the two keys.
+     */
     static Set<String> heroRows(Context c) {
         Set<String> saved = get(c).getStringSet(KEY_HERO_ROWS, null);
         if (saved == null) return defaultHeroRows();
         Set<String> out = new LinkedHashSet<>();
-        for (String key : Feed.ROW_ORDER) if (saved.contains(key)) out.add(key);
+        boolean legacy = saved.contains(Feed.LEGACY_WATCHLIST);
+        for (String key : Feed.ROW_ORDER) if (saved.contains(key) || (legacy && Feed.isWatchlistRow(key))) out.add(key);
         return out;
     }
 

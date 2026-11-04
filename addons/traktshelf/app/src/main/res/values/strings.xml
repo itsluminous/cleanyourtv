@@ -4,7 +4,8 @@
     <string name="row_up_next">Up next</string>
     <string name="row_rec_shows">Recommended shows</string>
     <string name="row_rec_movies">Recommended movies</string>
-    <string name="row_watchlist">Watchlist</string>
+    <string name="row_watchlist_shows">Watchlist · Shows</string>
+    <string name="row_watchlist_movies">Watchlist · Movies</string>
     <string name="row_trending">Trending</string>
     <string name="row_history">Recently watched</string>
     <string name="sign_in">Sign in</string>
@@ -42,6 +43,12 @@
     <string name="remove_watchlist">Remove from watchlist</string>
     <string name="mark_watched">Mark watched</string>
     <string name="mark_episode_watched">Mark %1$s watched</string>
+    <!-- The pill while a Trakt write is in flight, and once Mark watched has gone through. -->
+    <string name="adding_watchlist">Adding…</string>
+    <string name="removing_watchlist">Removing…</string>
+    <string name="marking_watched">Marking…</string>
+    <string name="watched_done">Watched ✓</string>
+    <string name="trakt_write_failed">Trakt: %1$s</string>
     <string name="done">Done</string>
     <string name="failed">That did not work; try again</string>
     <string name="needs_sign_in">Sign in to Trakt first</string>

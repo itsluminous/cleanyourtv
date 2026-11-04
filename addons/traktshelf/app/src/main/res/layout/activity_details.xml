@@ -18,7 +18,7 @@
         <TextView android:id="@+id/tag" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:textAllCaps="true" android:letterSpacing="0.22" android:textSize="11sp" android:textColor="#8CFFFFFF" />
         <TextView android:id="@+id/title" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp"
-            android:textSize="46sp" android:textColor="#FFFFFFFF" android:letterSpacing="-0.02" android:includeFontPadding="false" android:maxLines="2" android:ellipsize="end" android:lineSpacingMultiplier="0.95" />
+            android:textSize="46sp" android:textColor="#FFFFFFFF" android:letterSpacing="-0.02" android:includeFontPadding="false" android:maxLines="1" android:ellipsize="end" />
         <TextView android:id="@+id/meta" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp"
             android:textSize="14sp" android:textColor="#B3FFFFFF" />
         <LinearLayout android:id="@+id/chips" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:orientation="horizontal" />

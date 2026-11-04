@@ -146,9 +146,13 @@ final class Sync {
                 recMovies.items.addAll(trakt.recommendations(Item.MOVIE, 15));
                 feed.rows.put(Feed.REC_MOVIES, recMovies);
                 progress = c.getString(R.string.sync_watchlist);
-                Feed.Row watchlist = new Feed.Row(Feed.WATCHLIST);
-                watchlist.items.addAll(trakt.watchlist(20));
-                feed.rows.put(Feed.WATCHLIST, watchlist);
+                String sort = Prefs.ORDER_RELEASE.equals(Prefs.watchlistOrder(c)) ? "released" : "added";
+                Feed.Row watchlistShows = new Feed.Row(Feed.WATCHLIST_SHOWS);
+                watchlistShows.items.addAll(trakt.watchlist(Item.SHOW, sort, 20));
+                feed.rows.put(Feed.WATCHLIST_SHOWS, watchlistShows);
+                Feed.Row watchlistMovies = new Feed.Row(Feed.WATCHLIST_MOVIES);
+                watchlistMovies.items.addAll(trakt.watchlist(Item.MOVIE, sort, 20));
+                feed.rows.put(Feed.WATCHLIST_MOVIES, watchlistMovies);
                 Feed.Row history = new Feed.Row(Feed.HISTORY);
                 history.items.addAll(trakt.history(12));
                 feed.rows.put(Feed.HISTORY, history);
@@ -160,7 +164,7 @@ final class Sync {
                 Log.w(TAG, "account rows: " + e.getMessage());
                 error = c.getString(R.string.err_trakt, e.getMessage());
                 // Keep what the last sync had for the rows this one could not fetch.
-                for (String key : new String[]{Feed.UP_NEXT, Feed.REC_SHOWS, Feed.REC_MOVIES, Feed.WATCHLIST, Feed.HISTORY}) {
+                for (String key : new String[]{Feed.UP_NEXT, Feed.REC_SHOWS, Feed.REC_MOVIES, Feed.WATCHLIST_SHOWS, Feed.WATCHLIST_MOVIES, Feed.HISTORY}) {
                     if (!feed.rows.containsKey(key) && old.rows.containsKey(key)) feed.rows.put(key, old.rows.get(key));
                 }
             }

@@ -9,6 +9,7 @@ import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import android.app.AlertDialog;
@@ -22,6 +23,7 @@ import java.util.Set;
 public final class SettingsActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private LinearLayout list;
+    private ScrollView scroll;
     private Auth auth;
     private TextView syncValue;
     private final Runnable tick = this::updateSync;
@@ -32,6 +34,7 @@ public final class SettingsActivity extends Activity {
         setContentView(R.layout.activity_settings);
         Ui.applyFont(findViewById(android.R.id.content));
         list = findViewById(R.id.list);
+        scroll = findViewById(R.id.scroll);
         auth = new Auth(this);
     }
 
@@ -85,6 +88,8 @@ public final class SettingsActivity extends Activity {
             Prefs.setWatchlistOrder(this, release ? Prefs.ORDER_ADDED : Prefs.ORDER_RELEASE);
             ((TextView) v.findViewById(R.id.rowValue)).setText(watchlistOrderLabel());
             settingsChanged();
+            Sync.runNow(this, null);   // the rows are Trakt's first 20 in this order: fetch them again
+            updateSync();
         });
         if (signedIn) row(getString(R.string.sign_out), "", v -> {
             auth.signOut();
@@ -96,6 +101,12 @@ public final class SettingsActivity extends Activity {
         });
         View first = list.getChildAt(0);
         if (first != null) first.requestFocus();
+        // The rows outrun a 540dp screen; the ScrollView brings a focused row into view, and the last row brings the
+        // footnote under it along (nothing there takes focus).
+        View last = list.getChildAt(list.getChildCount() - 1);
+        if (last != null) last.setOnFocusChangeListener((v, has) -> {
+            if (has) scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
+        });
     }
 
     /** The carousel reads the provider again: Home's shelf follows a changed row set, count or order at once. */

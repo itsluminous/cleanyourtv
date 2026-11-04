@@ -76,6 +76,34 @@ final class Ui {
         return out;
     }
 
+    /**
+     * A title that stays on one line: from maxSp down to minSp, whichever largest size fits the view's width, then an
+     * ellipsis. The view gets a fixed height, one line at maxSp, so a shrunk title does not move what sits below it
+     * (TextView's auto-size needs a bounded box, and with wrap_content it would never grow back after shrinking);
+     * the text sits at the bottom of that box, next to the line under it. Needs a bounded width (match_parent or dp).
+     */
+    static void fitOneLine(TextView t, float maxSp, float minSp) {
+        t.setMaxLines(1);
+        t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        t.setHorizontallyScrolling(false);
+        t.setIncludeFontPadding(false);
+        t.setLineSpacing(0f, 1f);
+        t.setGravity(android.view.Gravity.BOTTOM | android.view.Gravity.START);
+        android.view.ViewGroup.LayoutParams lp = t.getLayoutParams();
+        lp.height = oneLinePx(t, maxSp);
+        t.setLayoutParams(lp);
+        t.setAutoSizeTextTypeUniformWithConfiguration(Math.round(minSp), Math.round(maxSp), 1, TypedValue.COMPLEX_UNIT_SP);
+    }
+
+    /** The height of one line of the view's typeface at sp, without font padding, plus a pixel so that size still fits. */
+    static int oneLinePx(TextView t, float sp) {
+        android.graphics.Paint p = new android.graphics.Paint(t.getPaint());
+        p.setTypeface(font(t.getContext()));
+        p.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, t.getResources().getDisplayMetrics()));
+        android.graphics.Paint.FontMetricsInt fm = p.getFontMetricsInt();
+        return fm.descent - fm.ascent + t.getPaddingTop() + t.getPaddingBottom() + 1;
+    }
+
     static void applyFont(View v) {
         if (v instanceof TextView) {
             TextView t = (TextView) v;

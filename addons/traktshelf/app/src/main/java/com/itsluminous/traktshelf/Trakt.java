@@ -74,9 +74,13 @@ final class Trakt {
         return out;
     }
 
-    /** The watchlist, movies and shows mixed, newest first. */
-    List<Item> watchlist(int limit) throws IOException, JSONException {
-        JSONArray a = getArray("/sync/watchlist?extended=full&page=1&limit=" + limit, true);
+    /**
+     * The watchlist's shows or movies (kind): the first limit in Trakt's "added" or "released" order, newest first,
+     * so a list longer than limit keeps the titles the Watchlist order setting puts first (Trakt's own default is
+     * the list's rank, where a re-added title comes last and would drop off the row).
+     */
+    List<Item> watchlist(String kind, String sort, int limit) throws IOException, JSONException {
+        JSONArray a = getArray("/sync/watchlist/" + kind + "s/" + sort + "/desc?extended=full&page=1&limit=" + limit, true);
         return mixed(a);
     }
 
@@ -150,45 +154,51 @@ final class Trakt {
     }
 
     // ---- writes ---------------------------------------------------------------------------------------
+    // Each returns null when Trakt took the change, or a short reason for the UI ("answered 429", the IOException).
 
-    private boolean post(String path, Item it) {
+    private String post(String path, Item it) {
         try {
             JSONObject ids = new JSONObject().put("trakt", it.traktId);
             if (it.imdbId != null) ids.put("imdb", it.imdbId);
             JSONObject media = new JSONObject().put("ids", ids);
             JSONObject body = new JSONObject().put(Item.SHOW.equals(it.kind) ? "shows" : "movies", new JSONArray().put(media));
-            Http.Response r = Http.postJson(Auth.API + path, headers(true), body);
-            if (!r.ok()) Log.w(TAG, "POST " + path + " answered " + r.code + ": " + r.body);
-            return r.ok();
-        } catch (IOException | JSONException e) {
-            Log.w(TAG, "POST " + path + ": " + e.getMessage());
-            return false;
+            return send(path, body);
+        } catch (JSONException e) {
+            return e.getMessage();
         }
     }
 
-    boolean addToWatchlist(Item it) {
+    private String send(String path, JSONObject body) {
+        try {
+            Http.Response r = Http.postJson(Auth.API + path, headers(true), body);
+            if (r.ok()) return null;
+            Log.w(TAG, "POST " + path + " answered " + r.code + ": " + r.body);
+            return r.code == 401 ? "signed out" : "answered " + r.code;
+        } catch (IOException e) {
+            Log.w(TAG, "POST " + path + ": " + e.getMessage());
+            return e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+        }
+    }
+
+    String addToWatchlist(Item it) {
         return post("/sync/watchlist", it);
     }
 
-    boolean removeFromWatchlist(Item it) {
+    String removeFromWatchlist(Item it) {
         return post("/sync/watchlist/remove", it);
     }
 
     /** A movie: watched now. A show with a next episode: that episode; otherwise the whole show. */
-    boolean markWatched(Item it) {
+    String markWatched(Item it) {
         if (Item.SHOW.equals(it.kind) && it.nextSeason > 0) {
             try {
                 JSONObject ep = new JSONObject().put("number", it.nextNumber);
                 JSONObject season = new JSONObject().put("number", it.nextSeason).put("episodes", new JSONArray().put(ep));
                 JSONObject show = new JSONObject().put("ids", new JSONObject().put("trakt", it.traktId))
                         .put("seasons", new JSONArray().put(season));
-                JSONObject body = new JSONObject().put("shows", new JSONArray().put(show));
-                Http.Response r = Http.postJson(Auth.API + "/sync/history", headers(true), body);
-                if (!r.ok()) Log.w(TAG, "POST /sync/history answered " + r.code + ": " + r.body);
-                return r.ok();
-            } catch (IOException | JSONException e) {
-                Log.w(TAG, "mark episode: " + e.getMessage());
-                return false;
+                return send("/sync/history", new JSONObject().put("shows", new JSONArray().put(show)));
+            } catch (JSONException e) {
+                return e.getMessage();
             }
         }
         return post("/sync/history", it);

@@ -105,9 +105,9 @@ launcher keeps its no-network rule: it only reads the companion's content provid
 | Part | How |
 |---|---|
 | **Sign in** | Trakt's device-code flow: a code on the TV, approve at `trakt.tv/activate` on your phone. A public (PKCE) Trakt app, `client_id` only, no client secret anywhere. |
-| **Rows** | Up next, Recommended shows, Recommended movies, Watchlist, Trending (no account needed), Recently watched. Posters and backdrops from TMDB, synopsis, cast and trailer from TMDB, IMDb and Rotten Tomatoes ratings from OMDb, Trakt's own rating. |
-| **Details** | **Play** goes to Stremio (a deep link to the title, the next episode for a show), CloudStream (a search) or NetMirror; a chooser when more than one is installed, or **Default player** in its Settings. **Trailer** opens TizenTube when installed, SmartTube otherwise, and re-sends the link after TizenTube's cold start. Add to or remove from the watchlist, mark watched. |
-| **Settings** | Account, Sync now, Default player, **Carousel rows** (a tick list of the six rows), **Carousel items** (6 to 20), **Watchlist order** (date added, or release date with upcoming titles first), Sign out. |
+| **Rows** | Up next, Recommended shows, Recommended movies, Watchlist · Shows, Watchlist · Movies, Trending (no account needed), Recently watched. Posters and backdrops from TMDB, synopsis, cast and trailer from TMDB, IMDb and Rotten Tomatoes ratings from OMDb, Trakt's own rating. |
+| **Details** | **Play** goes to Stremio (a deep link to the title, the next episode for a show), CloudStream (a search) or NetMirror; a chooser when more than one is installed, or **Default player** in its Settings. **Trailer** opens TizenTube when installed, SmartTube otherwise, and re-sends the link after TizenTube's cold start. Add to or remove from the watchlist, mark watched: the pill shows the write in progress and then its result. Long titles shrink to fit one line, then end in an ellipsis, here and on the launcher's carousel. |
+| **Settings** | Account, Sync now, Default player, **Carousel rows** (a tick list of the seven rows), **Carousel items** (6 to 20), **Watchlist order** (date added, or release date with upcoming titles first; also which 20 of a longer list the rows hold), Sign out. |
 | **Sync** | A JobScheduler job every 6 hours while online, after sign-in, and from Settings. |
 | **For the launcher** | `content://com.itsluminous.traktshelf.hero/items`, read-only: the titles `hero_feed` shows, unreleased ones left out. And a module card named **Trakt**, which the launcher asks you about once. |
 

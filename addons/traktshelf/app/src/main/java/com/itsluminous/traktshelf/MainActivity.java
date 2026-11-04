@@ -52,6 +52,7 @@ public final class MainActivity extends Activity implements PosterAdapter.Listen
         backdrop = findViewById(R.id.backdrop);
         heroTag = findViewById(R.id.heroTag);
         heroTitle = findViewById(R.id.heroTitle);
+        Ui.fitOneLine(heroTitle, 40f, 24f);
         heroMeta = findViewById(R.id.heroMeta);
         heroSynopsis = findViewById(R.id.heroSynopsis);
         chips = findViewById(R.id.heroChips);

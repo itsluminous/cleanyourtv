@@ -27,9 +27,11 @@ import java.util.Map;
 final class Feed {
     private static final String TAG = "TraktShelf.Feed";
     static final String UP_NEXT = "up_next", REC_SHOWS = "rec_shows", REC_MOVIES = "rec_movies",
-            WATCHLIST = "watchlist", TRENDING = "trending", HISTORY = "history";
+            WATCHLIST_SHOWS = "watchlist_shows", WATCHLIST_MOVIES = "watchlist_movies", TRENDING = "trending", HISTORY = "history";
+    /** The one watchlist row of earlier builds: an old feed.json or Carousel rows choice still names it. */
+    static final String LEGACY_WATCHLIST = "watchlist";
     /** Row order on Home. */
-    static final String[] ROW_ORDER = {UP_NEXT, REC_SHOWS, REC_MOVIES, WATCHLIST, TRENDING, HISTORY};
+    static final String[] ROW_ORDER = {UP_NEXT, REC_SHOWS, REC_MOVIES, WATCHLIST_SHOWS, WATCHLIST_MOVIES, TRENDING, HISTORY};
     static final long META_TTL_MS = 7L * 86_400_000L;
 
     static final class Row {
@@ -48,8 +50,10 @@ final class Feed {
                     return R.string.row_rec_shows;
                 case REC_MOVIES:
                     return R.string.row_rec_movies;
-                case WATCHLIST:
-                    return R.string.row_watchlist;
+                case WATCHLIST_SHOWS:
+                    return R.string.row_watchlist_shows;
+                case WATCHLIST_MOVIES:
+                    return R.string.row_watchlist_movies;
                 case HISTORY:
                     return R.string.row_history;
                 default:
@@ -60,6 +64,52 @@ final class Feed {
 
     final LinkedHashMap<String, Row> rows = new LinkedHashMap<>();
     long syncedAt;
+
+    /** The watchlist row a title belongs to, by its kind. */
+    static String watchlistRow(String kind) {
+        return Item.SHOW.equals(kind) ? WATCHLIST_SHOWS : WATCHLIST_MOVIES;
+    }
+
+    static boolean isWatchlistRow(String key) {
+        return WATCHLIST_SHOWS.equals(key) || WATCHLIST_MOVIES.equals(key) || LEGACY_WATCHLIST.equals(key);
+    }
+
+    /** True when the title is on the watchlist row of its kind. */
+    boolean onWatchlist(Item item) {
+        Row r = rows.get(watchlistRow(item.kind));
+        if (r != null) for (Item it : r.items) if (it.key().equals(item.key())) return true;
+        return false;
+    }
+
+    /**
+     * Puts a title on, or takes it off, its watchlist row, as the Trakt write just did, so Home and the provider show
+     * the change before the next sync confirms it. Creates the row when it is missing; the order is applied again.
+     */
+    void setOnWatchlist(Context c, Item item, boolean on) {
+        String key = watchlistRow(item.kind);
+        Row r = rows.get(key);
+        if (r == null) {
+            r = new Row(key);
+            rows.put(key, r);
+            LinkedHashMap<String, Row> ordered = new LinkedHashMap<>();
+            for (String k : ROW_ORDER) if (rows.containsKey(k)) ordered.put(k, rows.get(k));
+            rows.clear();
+            rows.putAll(ordered);
+        }
+        for (int i = r.items.size() - 1; i >= 0; i--) if (r.items.get(i).key().equals(item.key())) r.items.remove(i);
+        if (on) {
+            Item copy = null;
+            try {
+                copy = Item.fromJson(item.toJson());
+            } catch (JSONException ignored) {
+            }
+            if (copy == null) copy = item;
+            copy.sourceRow = key;
+            if (copy.listedAt == 0) copy.listedAt = System.currentTimeMillis();
+            r.items.add(0, copy);
+        }
+        orderWatchlist(c);
+    }
     String lastError;
 
     static File file(Context c) {
@@ -80,11 +130,23 @@ final class Feed {
             f.lastError = Item.opt(j, "last_error");
             JSONObject rows = j.optJSONObject("rows");
             if (rows != null) {
+                // A feed written before the split has one "watchlist" row: its shows and movies go to the two rows.
+                JSONArray legacy = rows.optJSONArray(LEGACY_WATCHLIST);
                 for (String key : ROW_ORDER) {
                     JSONArray a = rows.optJSONArray(key);
-                    if (a == null) continue;
+                    boolean fromLegacy = a == null && legacy != null && isWatchlistRow(key);
+                    if (a == null && !fromLegacy) continue;
                     Row r = new Row(key);
-                    for (int i = 0; i < a.length(); i++) r.items.add(Item.fromJson(a.getJSONObject(i)));
+                    if (!fromLegacy) {
+                        for (int i = 0; i < a.length(); i++) r.items.add(Item.fromJson(a.getJSONObject(i)));
+                    } else {
+                        for (int i = 0; i < legacy.length(); i++) {
+                            Item it = Item.fromJson(legacy.getJSONObject(i));
+                            if (!watchlistRow(it.kind).equals(key)) continue;
+                            it.sourceRow = key;
+                            r.items.add(it);
+                        }
+                    }
                     f.rows.put(key, r);
                 }
             }
@@ -96,14 +158,18 @@ final class Feed {
     }
 
     /**
-     * The watchlist row in the order Settings asks for (Prefs.watchlistOrder): by date added, newest first, or by
+     * Both watchlist rows in the order Settings asks for (Prefs.watchlistOrder): by date added, newest first, or by
      * release date, the titles still to come soonest first and then the released ones newest first; items without
      * the date keep Trakt's order at the end. Home and the provider both load the feed, so both see it.
      */
     void orderWatchlist(Context c) {
-        Row r = rows.get(WATCHLIST);
-        if (r == null || r.items.size() < 2) return;
         boolean release = Prefs.ORDER_RELEASE.equals(Prefs.watchlistOrder(c));
+        orderRow(rows.get(WATCHLIST_SHOWS), release);
+        orderRow(rows.get(WATCHLIST_MOVIES), release);
+    }
+
+    private static void orderRow(Row r, boolean release) {
+        if (r == null || r.items.size() < 2) return;
         final long now = System.currentTimeMillis();
         List<Item> dated = new ArrayList<>(), undated = new ArrayList<>();
         for (Item it : r.items) ((release ? it.released : it.listedAt) > 0 ? dated : undated).add(it);
@@ -153,8 +219,8 @@ final class Feed {
         return null;
     }
 
-    /** Each row's share of the carousel, before the leftover is filled in row order (heroItems). */
-    private static final int[] HERO_WEIGHT = {4, 3, 3, 2, 3, 2};
+    /** Each row's share of the carousel, before the leftover is filled in row order (heroItems); the old watchlist's 2 is split. */
+    private static final int[] HERO_WEIGHT = {4, 3, 3, 1, 1, 3, 2};
 
     /**
      * Items for the launcher's carousel: Settings' rows (Prefs.heroRows) in row order, Up Next first, each with its

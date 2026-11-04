@@ -35,8 +35,11 @@ final class HeroFeed {
     static final String PACKAGE = "com.itsluminous.traktshelf";
     static final String DETAILS_ACTIVITY = PACKAGE + ".DetailsActivity";
     static final Uri ITEMS = Uri.parse("content://" + PACKAGE + ".hero/items");
-    /** Items beyond this are not read: the carousel is a glance, and each backdrop costs about 0.9 MB decoded. */
-    static final int MAX_ITEMS = 12;
+    /**
+     * Items beyond this are not read. The companion's Carousel items setting goes up to 20, so this only guards against a
+     * provider that answers with far more; backdrops are decoded on demand (an LRU of three), so the count costs no memory.
+     */
+    static final int MAX_ITEMS = 20;
 
     /** One carousel entry. */
     static final class Entry {

@@ -30,7 +30,11 @@ final class UniformRows {
         return position / columns;
     }
 
-    /** Tiles in the row {@code position} is in: {@code columns}, or what is left for a short last row. One dot each. */
+    /**
+     * Tiles in the row {@code position} is in: {@code columns}, or what is left for a short last row. One dot each.
+     * {@code itemCount} is the apps (AppAdapter.appCount), not the adapter's item count: the All apps row the library
+     * appends is an item of its own under the last row and has no dot.
+     */
     static int rowCount(int position, int columns, int itemCount) {
         return Math.max(0, Math.min(columns, itemCount - rowStart(position, columns)));
     }

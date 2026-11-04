@@ -57,6 +57,20 @@ public class UniformRowsTest {
     }
 
     @Test
+    public void theLastRowCountsItsAppsNotTheAllAppsRowUnderIt() {
+        // 15 apps at 6 columns: 6, 6, then 3. The count passed in is the apps (AppAdapter.appCount); the library's
+        // All apps row is one more adapter item after the last app (getItemCount 16), which once gave this row a
+        // fourth dot.
+        int apps = 15, adapterItems = apps + 1;
+        assertEquals(3, UniformRows.rowCount(12, 6, apps));
+        assertEquals(3, UniformRows.rowCount(14, 6, apps));
+        assertEquals(4, UniformRows.rowCount(12, 6, adapterItems));   // the old arithmetic, for the record
+        // A last row that is exactly full stays full, and a lone app in it gets one dot (and so none drawn).
+        assertEquals(6, UniformRows.rowCount(12, 6, 18));
+        assertEquals(1, UniformRows.rowCount(18, 6, 19));
+    }
+
+    @Test
     public void theRestingLineIsTheShelfsRoomWhereTheDockLayoutPutIt() {
         // mooq1-frosted today: the carousel's 201dp plus the 40dp gap, 482px, is above the dock layout's own
         // h - dock row - 1 row - 30dp (403px), so that is where the first row rested. Uniform rows keep it.

@@ -2644,8 +2644,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void updateHeroDots(int position) {
         if (!heroDotsShown) return;
         int count = Math.min(adapter.dockFilled(), COLUMNS);
-        // One dot per app in the focused row: the last row may be short (shelf_every_row, and so uniform_rows).
-        if (shelfEveryRow) count = UniformRows.rowCount(position, COLUMNS, adapter.getItemCount());
+        // One dot per app in the focused row: the last row may be short (shelf_every_row, and so uniform_rows). The
+        // apps alone: getItemCount also counts the All apps row the library adds after the last Home row (its own
+        // full-width item, AppAdapter.isLibraryAt), which gave the last row one dot more than its tiles.
+        if (shelfEveryRow) count = UniformRows.rowCount(position, COLUMNS, adapter.appCount());
         drawDots(count, shelfEveryRow ? position % COLUMNS : position);
     }
 

@@ -2233,11 +2233,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) hero.getLayoutParams();
         lp.setMarginStart((int) (68 * density) - pad);
         hero.setLayoutParams(lp);
-        heroName.setTextSize(TypedValue.COMPLEX_UNIT_SP, shelfTitleSp(36f));
-        heroName.setMaxWidth((int) (560 * density));
+        fitCarouselTitle();
         topMargin(heroMeta, 6);
         topMargin(heroDots, 10);
-        heroName.setEllipsize(TextUtils.TruncateAt.END);
         heroMeta.setVisibility(View.VISIBLE);
         heroSynopsis.setVisibility(View.VISIBLE);
         heroChips.setVisibility(View.VISIBLE);
@@ -2349,6 +2347,49 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         hero.setY(Math.max(y, minTop));
     }
 
+    /** The carousel title's widest and narrowest sizes: 36sp, and 24sp before an ellipsis (five sixths of each at hero_height 60). */
+    private static final float CAROUSEL_TITLE_SP = 36f, CAROUSEL_TITLE_MIN_SP = 24f, CAROUSEL_TITLE_WIDTH_DP = 560f;
+
+    /**
+     * The carousel's title on one line: from 36sp down to 24sp, whichever largest fits 560dp, then an ellipsis. The
+     * view is given that width and one 36sp line of height, so a shrunk title leaves the synopsis, chips and dots
+     * where a short title has them (TextView's auto-size needs the bounded box; with wrap_content it never grows
+     * back after shrinking). The text sits at the bottom of the box, next to the kicker line under it.
+     */
+    private void fitCarouselTitle() {
+        float maxSp = shelfTitleSp(CAROUSEL_TITLE_SP), minSp = shelfTitleSp(CAROUSEL_TITLE_MIN_SP);
+        heroName.setHorizontallyScrolling(false);   // singleLine's scrolling would give auto-size an unbounded width
+        heroName.setMaxLines(1);
+        heroName.setEllipsize(TextUtils.TruncateAt.END);
+        heroName.setGravity(Gravity.BOTTOM | (heroName.getGravity() & Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK));   // layout-iw: right
+        ViewGroup.LayoutParams lp = heroName.getLayoutParams();
+        lp.width = (int) (CAROUSEL_TITLE_WIDTH_DP * density);
+        lp.height = oneLinePx(heroName, maxSp);
+        heroName.setLayoutParams(lp);
+        heroName.setAutoSizeTextTypeUniformWithConfiguration(Math.round(minSp), Math.round(maxSp), 1, TypedValue.COMPLEX_UNIT_SP);
+    }
+
+    /** The app's name again: one line of sp that overflows rather than wraps, the view as wide and tall as the text. */
+    private void unfitCarouselTitle(float sp) {
+        heroName.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE);   // setTextSize is ignored while on
+        heroName.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
+        heroName.setHorizontallyScrolling(true);
+        heroName.setEllipsize(null);
+        heroName.setGravity(Gravity.TOP | (heroName.getGravity() & Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK));
+        ViewGroup.LayoutParams lp = heroName.getLayoutParams();
+        lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+        lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        heroName.setLayoutParams(lp);
+    }
+
+    /** One line of the view's typeface at sp, no font padding (as heroName is laid out), plus a pixel so that size still fits auto-size's test. */
+    private static int oneLinePx(TextView t, float sp) {
+        android.graphics.Paint p = new android.graphics.Paint(t.getPaint());
+        p.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, t.getResources().getDisplayMetrics()));
+        android.graphics.Paint.FontMetricsInt fm = p.getFontMetricsInt();
+        return fm.descent - fm.ascent + t.getPaddingTop() + t.getPaddingBottom() + 1;
+    }
+
     /** The shelf never reaches up into the header: 26dp of padding and the 52sp clock end about 90dp down. */
     private static final float SHELF_MIN_TOP_DP = 90f;
 
@@ -2414,11 +2455,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) hero.getLayoutParams();
         lp.setMarginStart((int) (68 * density));
         hero.setLayoutParams(lp);
-        heroName.setTextSize(TypedValue.COMPLEX_UNIT_SP, shelfTitleSp(cinematic ? 68f : 48f));
-        heroName.setMaxWidth(Integer.MAX_VALUE);
+        unfitCarouselTitle(shelfTitleSp(cinematic ? 68f : 48f));
         topMargin(heroMeta, 12);
         topMargin(heroDots, 16);
-        heroName.setEllipsize(null);
         heroSynopsis.setVisibility(View.GONE);
         heroChips.setVisibility(View.GONE);
         heroChips.removeAllViews();

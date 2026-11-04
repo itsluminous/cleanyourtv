@@ -161,7 +161,9 @@ final class HeroFeed {
             case "rec_shows":
             case "rec_movies":
                 return context.getString(R.string.hero_feed_recommended) + " · " + context.getString(what);
-            case "watchlist":
+            case "watchlist":          // the companion before its watchlist split into shows and movies
+            case "watchlist_shows":
+            case "watchlist_movies":
                 return context.getString(R.string.hero_feed_watchlist) + " · " + context.getString(what);
             case "trending":
                 return context.getString(R.string.hero_feed_trending) + " · " + context.getString(what);

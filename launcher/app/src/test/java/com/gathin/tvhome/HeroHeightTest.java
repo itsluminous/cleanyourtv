@@ -2,6 +2,7 @@ package com.gathin.tvhome;
 
 import org.junit.Test;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -80,7 +81,7 @@ public class HeroHeightTest {
 
     @Test
     public void theToggleDecidesTheAutoHeight() {
-        // mooq1-frosted: hero_feed true, no hero_height. Theme default is 100; Off in the panel makes it 80.
+        // mooq1-frosted: hero_feed true, no hero_height. The theme gives 100; Off in the panel makes it 80.
         boolean feed = Config.chosenHeroFeed(-1, true);
         assertEquals(100, Config.chosenHeroHeight(-1, Config.HERO_HEIGHT_AUTO, feed));
         feed = Config.chosenHeroFeed(0, true);
@@ -99,6 +100,27 @@ public class HeroHeightTest {
             assertEquals(pct, Config.chosenHeroHeight(pct, 100, true));
         }
         assertEquals(100, levels[2]);   // Normal is the layout's own
+    }
+
+    @Test
+    public void thePickerMarksTheHeightInForceAndAddsAThemesOddOne() {
+        // The height in force is one of the four: the picker is the four, and that one is marked. No "Theme default" row.
+        assertArrayEquals(new int[]{60, 80, 100, 120}, SettingsPanel.heroHeightChoices(100));
+        assertEquals(2, SettingsPanel.indexOf(SettingsPanel.heroHeightChoices(100), 100));
+        assertEquals(1, SettingsPanel.indexOf(SettingsPanel.heroHeightChoices(80), 80));
+        // mooq1-frosted, no saved choice: the feed on gives 100 (Normal), off 80 (Short).
+        assertEquals(2, SettingsPanel.indexOf(SettingsPanel.heroHeightChoices(Config.chosenHeroHeight(-1, 0, true)), 100));
+        assertEquals(1, SettingsPanel.indexOf(SettingsPanel.heroHeightChoices(Config.chosenHeroHeight(-1, 0, false)), 80));
+        // A theme's hero_height outside the four joins the list in order of size, so the marked row is always shown.
+        assertArrayEquals(new int[]{60, 70, 80, 100, 120}, SettingsPanel.heroHeightChoices(70));
+        assertArrayEquals(new int[]{50, 60, 80, 100, 120}, SettingsPanel.heroHeightChoices(50));
+        assertArrayEquals(new int[]{60, 80, 100, 120, 130}, SettingsPanel.heroHeightChoices(130));
+        assertEquals(4, SettingsPanel.indexOf(SettingsPanel.heroHeightChoices(130), 130));
+        // The list handed out is a copy: a caller cannot reorder the panel's levels.
+        int[] copy = SettingsPanel.heroHeightChoices(100);
+        copy[0] = 1;
+        assertEquals(60, SettingsPanel.HERO_HEIGHTS[0]);
+        assertEquals(-1, SettingsPanel.indexOf(SettingsPanel.HERO_HEIGHTS, 70));
     }
 
     @Test

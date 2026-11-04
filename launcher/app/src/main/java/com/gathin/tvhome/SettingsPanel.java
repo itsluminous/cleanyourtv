@@ -29,13 +29,15 @@ import java.util.function.Consumer;
 /**
  * settings_panel: Launcher settings as a side panel in the style of Android TV's own Settings, a dark sheet on the
  * right over Home, with a title, a section caption, and rows of icon, title and the current value. A row with
- * several values opens a second page in the same panel (a list with the current one marked); Back returns.
+ * several values opens a second page in the same panel (a list with the current one marked); Back returns. The
+ * value a row shows, and the row its picker marks, is the one in force: the saved choice, else what the theme gives,
+ * so no picker has a "Theme default" row; the Follow theme row is the one place that clears the saved choices.
  * Everything is drawn in code so the panel costs no layout resource.
  */
 final class SettingsPanel {
     private static final int PANEL_BG = 0xFF1B1E22, ROW_FOCUS = 0xFF2F3338, CAPTION = 0xFF4C8DF5, SUBTITLE = 0xFFA7ADB4;
     private static final int[] DOCK_OPACITIES = {100, 70, 50, 30};
-    /** hero_height: the four shelf heights the panel offers, percent; a fifth row hands the choice back to the theme. */
+    /** hero_height: the four shelf heights the panel offers, percent; a theme's own height outside them joins the list. */
     static final int[] HERO_HEIGHTS = {60, 80, 100, 120};
     private static final int[] HERO_HEIGHT_NAMES = {R.string.hero_height_compact, R.string.hero_height_short,
             R.string.hero_height_normal, R.string.hero_height_tall};
@@ -122,12 +124,20 @@ final class SettingsPanel {
             choose(activity.getString(R.string.columns_label), labels, columns - 4, which ->
                     save(e -> e.putInt("columns", which + 4)));
         });
+        // Trakt recommendations as it stands now (the saved toggle over the theme's hero_feed): the hero height's
+        // auto rule and its row read it, so it comes before them.
+        int chosenFeed = choices.getInt(Config.HERO_FEED_KEY, -1);
+        boolean feedNow = Config.chosenHeroFeed(chosenFeed, config.themeHeroFeed);
         if (config.dockRow) {
             int rows = choices.getInt(Config.ROWS_BELOW_DOCK_KEY, config.rowsBelowDock);
-            row(R.drawable.ic_apps_pill, activity.getString(R.string.rows_below_dock_label), String.valueOf(rows), v -> {
+            // shelf_every_row: every row scrolls to the dock's line, so there is no dock in the owner's eyes; the row
+            // keeps its key and values but names the first row, and says what the number does.
+            boolean everyRow = config.shelfEveryRow;
+            String rowsLabel = activity.getString(everyRow ? R.string.rows_below_first_row_label : R.string.rows_below_dock_label);
+            String rowsValue = everyRow ? rows + " \u00b7 " + activity.getString(R.string.rows_below_first_row_hint) : String.valueOf(rows);
+            row(R.drawable.ic_apps_pill, rowsLabel, rowsValue, v -> {
                 String[] labels = {"0", "1", "2", "3"};
-                choose(activity.getString(R.string.rows_below_dock_label), labels, rows, which ->
-                        save(e -> e.putInt(Config.ROWS_BELOW_DOCK_KEY, which)));
+                choose(rowsLabel, labels, rows, which -> save(e -> e.putInt(Config.ROWS_BELOW_DOCK_KEY, which)));
             });
             int opacity = choices.getInt(Config.DOCK_OPACITY_KEY, config.dockOpacity);
             row(R.drawable.ic_picture, activity.getString(R.string.dock_opacity_label), opacity + "%", v -> {
@@ -140,36 +150,28 @@ final class SettingsPanel {
                 choose(activity.getString(R.string.dock_opacity_label), labels, checked, which ->
                         save(e -> e.putInt(Config.DOCK_OPACITY_KEY, DOCK_OPACITIES[which])));
             });
-            // Hero banner height: the shelf's share of the room above the dock. A saved choice overrides the theme's
-            // hero_height; "Theme default" removes it, so the theme's key decides again: its own percent, or with 0
-            // (auto) 100 while the Trakt carousel is on and 80 without it, the value shown in the brackets.
-            int chosenHero = choices.getInt(Config.HERO_HEIGHT_KEY, -1);
-            row(R.drawable.ic_picture, activity.getString(R.string.hero_height_label), heroHeightLabel(chosenHero), v -> {
-                String[] labels = new String[HERO_HEIGHTS.length + 1];
-                int checked = HERO_HEIGHTS.length;
-                for (int i = 0; i < HERO_HEIGHTS.length; i++) {
-                    labels[i] = heroHeightLabel(HERO_HEIGHTS[i]);
-                    if (HERO_HEIGHTS[i] == chosenHero) checked = i;
-                }
-                labels[HERO_HEIGHTS.length] = heroHeightLabel(-1);
-                choose(activity.getString(R.string.hero_height_label), labels, checked, which -> save(e -> {
-                    if (which == HERO_HEIGHTS.length) e.remove(Config.HERO_HEIGHT_KEY);
-                    else e.putInt(Config.HERO_HEIGHT_KEY, HERO_HEIGHTS[which]);
-                }));
+            // Hero banner height: the shelf's share of the room above the dock. The row and its picker show the
+            // height in force, Config.chosenHeroHeight: the saved choice, else the theme's hero_height, else with its
+            // 0 (auto) 100 while the Trakt carousel is on and 80 without it. A pick saves that level; the Follow
+            // theme row below is what hands the choice back to the theme.
+            int heroNow = Config.chosenHeroHeight(choices.getInt(Config.HERO_HEIGHT_KEY, -1), config.themeHeroHeight, feedNow);
+            row(R.drawable.ic_picture, activity.getString(R.string.hero_height_label), heroHeightLabel(heroNow), v -> {
+                int[] levels = heroHeightChoices(heroNow);
+                String[] labels = new String[levels.length];
+                for (int i = 0; i < levels.length; i++) labels[i] = heroHeightLabel(levels[i]);
+                choose(activity.getString(R.string.hero_height_label), labels, indexOf(levels, heroNow), which ->
+                        save(e -> e.putInt(Config.HERO_HEIGHT_KEY, levels[which])));
             });
         }
         // Trakt recommendations (hero_feed): the carousel on the top shelf, over the theme's key. Always offered, so a
         // TV without the companion can keep it off whatever theme it runs; the value says when that app is missing.
-        int chosenFeed = choices.getInt(Config.HERO_FEED_KEY, -1);
-        String feedState = heroFeedLabel(chosenFeed);
+        // The row and its picker show the state in force (the theme's unless a choice is saved); a pick saves it.
+        String feedState = onOff(feedNow);
         if (!heroFeedInstalled()) feedState += " \u00b7 " + activity.getString(R.string.hero_feed_not_installed);
         row(R.drawable.ic_livetv, activity.getString(R.string.hero_feed_label), feedState, v -> {
-            String[] labels = {onOff(true), onOff(false), heroFeedLabel(-1)};
-            int checked = chosenFeed == 1 ? 0 : chosenFeed == 0 ? 1 : 2;
-            choose(activity.getString(R.string.hero_feed_label), labels, checked, which -> save(e -> {
-                if (which == 2) e.remove(Config.HERO_FEED_KEY);
-                else e.putInt(Config.HERO_FEED_KEY, which == 0 ? 1 : 0);
-            }));
+            String[] labels = {onOff(true), onOff(false)};
+            choose(activity.getString(R.string.hero_feed_label), labels, feedNow ? 0 : 1, which ->
+                    save(e -> e.putInt(Config.HERO_FEED_KEY, which == 0 ? 1 : 0)));
         });
         String clock = choices.getString(Config.CLOCK_FORMAT_KEY, config.clockFormat);
         String[] clockLabels = {activity.getString(R.string.clock_format_system),
@@ -300,22 +302,30 @@ final class SettingsPanel {
         (focus != null ? focus : list.getChildAt(0)).requestFocus();
     }
 
+    /**
+     * The Wallpaper picker: the theme's pictures by name (its wallpaper.jpg first), a row for its rotating collection
+     * when it has one, and None; the marked row is the wallpaper in force, so with no saved pick the theme's own. A
+     * picture or None saves that pick; the collection row clears it, so the theme rotates again.
+     */
     private void showWallpaper() {
         File dir = Config.dir(activity);
-        List<File> images = new ArrayList<>(WallpaperRotation.images(dir == null ? null : new File(dir, "wallpapers")));
+        List<File> collection = WallpaperRotation.images(dir == null ? null : new File(dir, "wallpapers"));
+        List<File> images = new ArrayList<>(collection);
         File single = dir == null ? null : new File(dir, Config.WALLPAPER_NAME);
         if (single != null && single.isFile()) images.add(0, single);
-        String[] labels = new String[images.size() + 2];
-        labels[0] = activity.getString(R.string.wallpaper_theme_default);
-        for (int i = 0; i < images.size(); i++) labels[i + 1] = images.get(i).getName();
-        labels[labels.length - 1] = activity.getString(R.string.wallpaper_none);
-        String current = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
-        int checked = current == null ? 0 : "none".equals(current) ? labels.length - 1 : 0;
-        for (int i = 0; i < images.size(); i++) if (images.get(i).getName().equals(current)) checked = i + 1;
-        choose(activity.getString(R.string.wallpaper_label), labels, checked, which -> save(e -> {
-            if (which == 0) e.remove(Config.WALLPAPER_CHOICE_KEY);
-            else if (which == labels.length - 1) e.putString(Config.WALLPAPER_CHOICE_KEY, "none");
-            else e.putString(Config.WALLPAPER_CHOICE_KEY, images.get(which - 1).getName());
+        boolean rotation = config.wallpaperRotationMinutes > 0 && collection.size() > 1;
+        List<String> labels = new ArrayList<>();
+        if (rotation) labels.add(activity.getString(R.string.wallpaper_rotation, collection.size()));
+        for (File image : images) labels.add(image.getName());
+        labels.add(activity.getString(R.string.wallpaper_none));
+        int first = rotation ? 1 : 0, none = labels.size() - 1;
+        String current = effectiveWallpaper();
+        int checked = current == null ? 0 : none;
+        for (int i = 0; i < images.size(); i++) if (images.get(i).getName().equals(current)) checked = first + i;
+        choose(activity.getString(R.string.wallpaper_label), labels.toArray(new String[0]), checked, which -> save(e -> {
+            if (rotation && which == 0) e.remove(Config.WALLPAPER_CHOICE_KEY);
+            else if (which == none) e.putString(Config.WALLPAPER_CHOICE_KEY, "none");
+            else e.putString(Config.WALLPAPER_CHOICE_KEY, images.get(which - first).getName());
         }));
     }
 
@@ -366,10 +376,21 @@ final class SettingsPanel {
 
     private String onOff(boolean on) { return activity.getString(on ? R.string.on : R.string.off); }
 
-    private String wallpaperLabel() {
+    /**
+     * The wallpaper in force: the saved pick ("none" or a file name), else the theme's: its one picture's name, "none"
+     * when it shows no wallpaper, or null for a rotating collection.
+     */
+    private String effectiveWallpaper() {
         String current = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
-        return "none".equals(current) ? activity.getString(R.string.wallpaper_none)
-                : current != null ? current : activity.getString(R.string.wallpaper_theme_default);
+        if (current != null) return current;
+        if (!config.wallpaperEnabled || config.wallpapers.isEmpty()) return "none";
+        return config.wallpapers.size() > 1 ? null : config.wallpapers.get(0).getName();
+    }
+
+    private String wallpaperLabel() {
+        String current = effectiveWallpaper();
+        if (current == null) return activity.getString(R.string.wallpaper_rotation, config.wallpapers.size());
+        return "none".equals(current) ? activity.getString(R.string.wallpaper_none) : current;
     }
 
     private String openOnStartLabel() {
@@ -392,27 +413,33 @@ final class SettingsPanel {
     }
 
     /**
-     * The hero height row's value: the named level with its percent ("Short (80%)") for one of the four levels, and
-     * for {@code chosen} -1, no choice, "Theme default" with the percent the theme resolves to (its hero_height, or
-     * the auto rule's 100 or 80 by the carousel as the Trakt row leaves it now), so the owner sees what handing the
-     * choice back gives, and the bracket follows a Trakt choice made on this visit.
+     * The hero height row's value and its picker's rows: the named level with its percent ("Short (80%)") for one of
+     * the four levels, the bare percent ("70%") for a height a theme named outside them.
      */
-    private String heroHeightLabel(int chosen) {
-        if (chosen < 0) {
-            boolean feed = Config.chosenHeroFeed(choices.getInt(Config.HERO_FEED_KEY, -1), config.themeHeroFeed);
-            int pct = Config.chosenHeroHeight(-1, config.themeHeroHeight, feed);
-            return activity.getString(R.string.wallpaper_theme_default) + " (" + pct + "%)";
-        }
-        for (int i = 0; i < HERO_HEIGHTS.length; i++) {
-            if (HERO_HEIGHTS[i] == chosen) return activity.getString(HERO_HEIGHT_NAMES[i]) + " (" + chosen + "%)";
-        }
-        return chosen + "%";
+    private String heroHeightLabel(int pct) {
+        int i = indexOf(HERO_HEIGHTS, pct);
+        return i >= 0 ? activity.getString(HERO_HEIGHT_NAMES[i]) + " (" + pct + "%)" : pct + "%";
     }
 
-    /** The Trakt recommendations row's value: On, Off, or "Theme default (On)" with what the theme's hero_feed says. */
-    private String heroFeedLabel(int chosen) {
-        if (chosen == 1 || chosen == 0) return onOff(chosen == 1);
-        return activity.getString(R.string.wallpaper_theme_default) + " (" + onOff(config.themeHeroFeed) + ")";
+    /**
+     * The heights the picker offers, HERO_HEIGHTS in order, with {@code effective} (the height in force, as
+     * Config.chosenHeroHeight gives it) slotted in by size when a theme named one outside the four, so the marked row
+     * is always one of those shown.
+     */
+    static int[] heroHeightChoices(int effective) {
+        if (indexOf(HERO_HEIGHTS, effective) >= 0) return HERO_HEIGHTS.clone();
+        int[] out = new int[HERO_HEIGHTS.length + 1];
+        int at = 0;
+        while (at < HERO_HEIGHTS.length && HERO_HEIGHTS[at] < effective) at++;
+        System.arraycopy(HERO_HEIGHTS, 0, out, 0, at);
+        out[at] = effective;
+        System.arraycopy(HERO_HEIGHTS, at, out, at + 1, HERO_HEIGHTS.length - at);
+        return out;
+    }
+
+    static int indexOf(int[] values, int value) {
+        for (int i = 0; i < values.length; i++) if (values[i] == value) return i;
+        return -1;
     }
 
     /** True while the Trakt shelf companion's provider (HeroFeed.ITEMS) is on the TV. */
@@ -458,7 +485,7 @@ final class SettingsPanel {
         column.addView(text(label, 17, Color.WHITE, false), new LinearLayout.LayoutParams(-1, -2));
         if (subtitle != null) {
             TextView sub = text(subtitle, 13, SUBTITLE, false);
-            sub.setMaxLines(2);
+            sub.setMaxLines(3);
             LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, -2);
             sp.topMargin = dp(3);
             column.addView(sub, sp);

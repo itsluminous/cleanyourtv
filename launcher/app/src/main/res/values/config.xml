@@ -447,7 +447,7 @@
          shelf_every_row the rows still scroll to the dock's line). Up from the dock focuses the carousel, Left/Right
          move it, OK opens the title in that app, Down or Back returns to the tile. Without the app, or with nothing
          in it, the shelf is as before. Needs dock_row. Off by default; a theme can set "hero_feed": true. The Trakt
-         recommendations row in Launcher settings (On, Off, Theme default) overrides this key on the TV: Off is exactly
+         recommendations row in Launcher settings (On, Off; it shows the theme's state until a choice is saved) overrides this key on the TV: Off is exactly
          "hero_feed": false, whatever the theme says. -->
     <bool name="hero_feed">false</bool>
     <integer name="hero_feed_interval">8</integer>

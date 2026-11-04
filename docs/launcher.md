@@ -65,22 +65,27 @@ The launcher's own page has these rows, top to bottom:
 - **Reorder apps**, only with `launcher_settings_button`, the same as the menu's.
 - **Apps per row** 4, 5, 6 or 7; **Rows below dock** 0 to 3, how many rows of tiles stay visible under the
   dock band; **Dock band opacity** 100%, 70%, 50% or 30%. The last two only do anything while the dock is
-  its own row (`dock_row`, on by default).
+  its own row (`dock_row`, on by default). In the side panel (`settings_panel`) with `shelf_every_row` on, where
+  no row is the dock, the rows row reads **Rows shown below the first row**, with the line "How many rows sit
+  under the first row at rest; more rows scroll up on Down"; the key and values are the same.
 - **Clock**: **System** follows the TV's 12- or 24-hour setting; **12-hour** or **24-hour** sets the launcher's
   clocks (Home and the clock screensaver) to that, whatever the TV uses (`clock_format` in a theme).
 - **Wallpaper**: one picture from the theme's collection (or its `wallpaper.jpg`), **None**, or **Theme
   default**. A pick holds that picture and stops the rotation until you choose Theme default, press
-  Follow theme, or push the theme again.
+  Follow theme, or push the theme again. The side panel has no Theme default row: its picker marks the
+  wallpaper in force (the theme's picture, or **Rotate the collection** when the theme rotates one), and that
+  rotation row is what clears a pick.
 - **Animations** on or off, and **Advanced effects** (tile lift, icon zoom and smooth ambient-colour
   transitions; they may use more memory) once animations are on.
 - **Open on start**, only with `open_on_start_choice`: Off, or an app that opens instead of Home the first
   time Home comes up after the TV starts. Once per boot, so Home and Back still reach the launcher.
-- **Hero banner height**: Compact (60%), Short (80%), Normal (100%), Tall (120%) or Theme default, the top
-  shelf's height; a shorter shelf lifts the dock and shows more rows (`hero_height` in a theme). Theme default
-  names the value it gives, "Theme default (80%)" say: the theme's `hero_height`, or with the default `0` (auto)
-  100 while the Trakt carousel is on and 80 without it.
-- **Trakt recommendations**: On, Off or Theme default, the Trakt shelf companion's carousel on the top shelf
-  (`hero_feed` in a theme). Off leaves the launcher exactly as with `hero_feed: false`: the shelf names the
+- **Hero banner height**: Compact (60%), Short (80%), Normal (100%) or Tall (120%), the top shelf's height;
+  a shorter shelf lifts the dock and shows more rows (`hero_height` in a theme). The row and its picker show the
+  height in force: a saved choice, else the theme's `hero_height`, else with the default `0` (auto) Normal (100%)
+  while the Trakt carousel is on and Short (80%) without it. A theme height outside the four joins the picker as
+  its own row ("70%"). There is no Theme default entry; **Follow theme** hands the choice back to the theme.
+- **Trakt recommendations**: On or Off, the Trakt shelf companion's carousel on the top shelf (`hero_feed` in a
+  theme); the row and its picker show the state in force, the theme's until you pick one. Off leaves the launcher exactly as with `hero_feed: false`: the shelf names the
   focused app and the companion is never read. The row is always there, and says when the Trakt shelf app is
   not installed.
 - **Backup & restore**: **Back up settings** writes every preference, the app order, hidden apps, the dock,

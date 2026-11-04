@@ -188,7 +188,7 @@ final class Config {
      * seconds; the Trakt recommendations toggle in Launcher settings (HERO_FEED_KEY) overrides the theme's key.
      */
     final boolean heroFeed;
-    /** The theme's hero_feed before the Launcher settings toggle, what the toggle's "Theme default" means. */
+    /** The theme's hero_feed before the Launcher settings toggle, what its row shows while no choice is saved. */
     final boolean themeHeroFeed;
     final int heroFeedInterval;
     /** Tile bottom to the next row's tile top, in dp (row_gap); AppAdapter.ITEM_EXTRA_DP is the layout's own 45. */
@@ -200,7 +200,7 @@ final class Config {
      */
     final int heroHeight;
     /**
-     * The theme's hero_height before the Launcher settings choice: 0 (auto) or 50 to 130. What "Theme default" in
+     * The theme's hero_height before the Launcher settings choice: 0 (auto) or 50 to 130. What Follow theme in
      * Launcher settings hands the choice back to; chosenHeroHeight(-1, themeHeroHeight, feed) is the value it gives.
      */
     final int themeHeroHeight;

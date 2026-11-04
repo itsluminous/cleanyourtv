@@ -52,6 +52,9 @@
     <string name="native_settings">Native settings</string>
     <string name="columns_label">Apps per row</string>
     <string name="rows_below_dock_label">Rows below dock</string>
+    <!-- shelf_every_row: the same row in the settings panel, where no row is the dock. -->
+    <string name="rows_below_first_row_label">Rows shown below the first row</string>
+    <string name="rows_below_first_row_hint">How many rows sit under the first row at rest; more rows scroll up on Down</string>
     <string name="dock_opacity_label">Dock band opacity</string>
     <string name="hero_height_label">Hero banner height</string>
     <string name="hero_height_compact">Compact</string>
@@ -66,6 +69,8 @@
     <string name="wallpaper_none">None</string>
     <string name="wallpaper_applied">Wallpaper changed</string>
     <string name="wallpaper_theme_default">Theme default</string>
+    <!-- settings_panel: the Wallpaper picker's row for the theme's rotating collection, what no saved pick gives. -->
+    <string name="wallpaper_rotation">Rotate the collection (%1$d pictures)</string>
     <string name="animations_state">Animations: %1$s</string>
     <string name="advanced_effects">Advanced effects</string>
     <string name="advanced_effects_state">Advanced effects: %1$s</string>

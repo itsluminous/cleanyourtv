@@ -44,10 +44,10 @@
     <string name="widget_memory_name">זיכרון</string>
     <string name="widget_cpu_name">מעבד</string>
     <string name="widget_storage_name">אחסון</string>
-    <string name="widget_cpu">מעבד %1$d%%</string>
-    <string name="widget_cpu_freq">מעבד %1$.1f GHz</string>
-    <string name="widget_memory">RAM %1$d MB</string>
-    <string name="widget_storage">%1$s פנוי</string>
+    <string name="widget_percent">%1$d%%</string>
+    <string name="widget_label_memory">RAM</string>
+    <string name="widget_label_cpu">מעבד</string>
+    <string name="widget_label_storage">אחסון</string>
     <string name="storage_gb_whole">%1$.0f GB</string>
     <string name="storage_gb_decimal">%1$.1f GB</string>
     <string name="dream_name">שעון</string>

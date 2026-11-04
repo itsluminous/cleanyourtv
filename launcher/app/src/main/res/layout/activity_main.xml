@@ -335,7 +335,7 @@
                             android:visibility="gone" />
                     </LinearLayout>
 
-                    <!-- widgets: the Memory, CPU and Storage chips right of the date, filled in code (MainActivity
+                    <!-- widgets: the Memory, CPU and Storage ring gauges right of the date, filled in code (MainActivity
                          setUpWidgets); gone, and nothing is read, while the list is empty. -->
                     <LinearLayout
                         android:id="@+id/widgets"

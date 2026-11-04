@@ -45,21 +45,6 @@
 
     <!-- widgets: a frosted chip beside the date, an icon and a figure ("CPU 12%"), smaller than a pill and never
          focused. Its size comes from the LayoutParams MainActivity gives it (30dp tall). -->
-    <style name="WidgetChip">
-        <item name="android:paddingStart">10dp</item>
-        <item name="android:paddingEnd">12dp</item>
-        <item name="android:gravity">center</item>
-        <item name="android:background">@drawable/pill_bg</item>
-        <item name="android:textColor">#D9FFFFFF</item>
-        <item name="android:textSize">12sp</item>
-        <item name="android:fontFamily">@string/font_medium</item>
-        <item name="android:letterSpacing">0.02</item>
-        <item name="android:drawablePadding">6dp</item>
-        <item name="android:drawableTint">#D9FFFFFF</item>
-        <item name="android:singleLine">true</item>
-        <item name="android:ellipsize">end</item>
-        <item name="android:includeFontPadding">false</item>
-    </style>
 
     <style name="SettingsRow">
         <item name="android:layout_width">match_parent</item>

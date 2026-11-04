@@ -245,11 +245,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private final Runnable turnTick = this::updatePanel;
     /** config.xml show_stats, overridable by a theme. Off: the line is gone and nothing is read. */
     private boolean showStats;
-    /** widgets (Config.widgets, after the Widgets tick list): the chips beside the date, in bar order; empty: none, nothing read. */
+    /** widgets (Config.widgets, after the Widgets tick list): the ring gauges beside the date, in bar order; empty: none, nothing read. */
     private List<String> widgets = Collections.emptyList();
     private LinearLayout widgetsBar;
-    /** One chip per name in {@link #widgets}, same order. */
-    private final List<TextView> widgetChips = new ArrayList<>(3);
+    /** One gauge per name in {@link #widgets}, same order. */
+    private final List<GaugeView> widgetGauges = new ArrayList<>(3);
     /** How often the chips are read while Home is on screen; show_stats alone keeps its STATS_MS. */
     private static final long WIDGETS_MS = 5_000L;
     /** config.xml inputs_connected_only: the Inputs menu lists only connected inputs, the rest behind "More inputs". */
@@ -2880,7 +2880,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // at any moment without the reader tripping over it.
         Handler bg = new Handler(statsThread.getLooper());
         statsBg = bg;
-        // The chips refresh every 5 seconds; the line alone keeps its 10. One reading serves both.
+        // The gauges refresh every 5 seconds; the line alone keeps its 10. One reading serves both.
         final long period = widgets.isEmpty() ? STATS_MS : WIDGETS_MS;
         bg.post(new Runnable() {
             @Override
@@ -2888,11 +2888,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (statsBg != bg) return;
                 Readings r = readStats();
                 String line = showStats ? statsLine(r) : null;
-                String[] chips = widgets.isEmpty() ? null : widgetTexts(r);
+                int[] gauges = widgets.isEmpty() ? null : widgetPercents(r);
                 handler.post(() -> {
                     if (statsBg != bg) return;
                     if (line != null && showStats && stats != null) stats.setText(line);
-                    if (chips != null) showWidgetValues(chips);
+                    if (gauges != null) showWidgetValues(gauges);
                 });
                 if (statsBg == bg) bg.postDelayed(this, period);
             }
@@ -2916,13 +2916,36 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         line.append(part);
     }
 
-    /** One reading of the three figures: CPU busy percent (-1 when it cannot be read), RAM {used, total} MB or null, free bytes on /data. */
-    private static final class Readings {
+    /**
+     * One reading of the three figures: CPU busy percent (-1 when it cannot be read), RAM {used, total} MB or null,
+     * free and total bytes on /data.
+     */
+    static final class Readings {
         int cpu = -1;
-        /** The cores' mean clock, kHz, read when the busy percent cannot be (the CPU chip shows it as GHz); 0 if neither. */
-        long cpuKhz;
+        /** The cores' mean clock as a percent of their top clock, read when the busy percent cannot be; -1 if neither. */
+        int cpuFreqPercent = -1;
         long[] mem;
-        long freeBytes;
+        long freeBytes, totalBytes;
+
+        /** RAM used of total, percent, or -1 without a reading. */
+        int memoryPercent() {
+            return mem == null || mem[1] <= 0 ? -1 : percentOf(mem[0], mem[1]);
+        }
+
+        /** Storage used of total on /data, percent, or -1 without a reading. */
+        int storagePercent() {
+            return totalBytes <= 0 ? -1 : percentOf(totalBytes - freeBytes, totalBytes);
+        }
+
+        /** The CPU gauge's percent: busy where the TV lets an app read it, the clock's share of its top otherwise. */
+        int cpuGaugePercent() {
+            return cpu >= 0 ? cpu : cpuFreqPercent;
+        }
+
+        static int percentOf(long part, long whole) {
+            if (whole <= 0) return -1;
+            return (int) Math.max(0, Math.min(100, Math.round(part * 100.0 / whole)));
+        }
     }
 
     /** Runs off the main thread: the CPU figure needs two samples 200 ms apart on the first pass. */
@@ -2939,9 +2962,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             cpu = cpuPercent();
         }
         r.cpu = cpu;
-        if (cpu < 0 && !widgets.isEmpty()) r.cpuKhz = cpuKhz();
+        if (cpu < 0 && !widgets.isEmpty()) r.cpuFreqPercent = cpuFreqPercent();
         r.mem = memUsedOfTotalMb();
-        r.freeBytes = Environment.getDataDirectory().getFreeSpace();
+        java.io.File data = Environment.getDataDirectory();
+        r.freeBytes = data.getFreeSpace();
+        r.totalBytes = data.getTotalSpace();
         return r;
     }
 
@@ -2956,13 +2981,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         return StatsText.forLocale(line.toString(), getResources().getConfiguration().getLocales().get(0));
     }
 
-    // ---- widgets: the chips beside the date (config.xml widgets, the Widgets tick list) -----------
+    // ---- widgets: the ring gauges beside the date (config.xml widgets, the Widgets tick list) -----
 
     /**
-     * widgets: one frosted chip per name, an icon and a figure, in the row that holds the clock and the date, right
-     * of the date. The date's column gives up its stretch so the chips follow the date rather than the pills; the
-     * chips' own box takes the rest of the row and stops at the pills, and fitWidgets caps and ellipsises them when
-     * they would not fit it. Each chip shows once its first reading is in (startStats).
+     * widgets: one ring gauge per name (GaugeView: a frost track, an arc for the percent full, the percent inside and
+     * a caps label under it), in the row that holds the clock and the date, right of the date, 12dp apart. The date's
+     * column gives up its stretch so the gauges follow the date rather than the pills; three fixed-width gauges are
+     * about 160dp, so they always fit before the pills. Each shows once its first reading is in (startStats).
      */
     private void setUpWidgets(List<String> names) {
         widgets = names;
@@ -2987,75 +3012,44 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         for (int i = 0; i < names.size(); i++) {
             String name = names.get(i);
-            TextView chip = new TextView(this, null, 0, R.style.WidgetChip);
-            int icon = Config.WIDGET_CPU.equals(name) ? R.drawable.ic_cpu
-                    : Config.WIDGET_MEMORY.equals(name) ? R.drawable.ic_memory : R.drawable.ic_storage;
-            chip.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0);
-            chip.setVisibility(View.INVISIBLE);   // until the first reading
-            LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Math.round(30 * density));
-            if (i > 0) clp.setMarginStart(Math.round(8 * density));
-            widgetsBar.addView(chip, clp);
-            widgetChips.add(chip);
+            GaugeView gauge = new GaugeView(this);
+            gauge.setLabel(getString(Config.WIDGET_CPU.equals(name) ? R.string.widget_label_cpu
+                    : Config.WIDGET_MEMORY.equals(name) ? R.string.widget_label_memory : R.string.widget_label_storage));
+            gauge.setVisibility(View.INVISIBLE);   // until the first reading
+            LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, GaugeView.heightPx(density));
+            if (i > 0) glp.setMarginStart(Math.round(WIDGET_GAP_DP * density));
+            widgetsBar.addView(gauge, glp);
+            widgetGauges.add(gauge);
         }
-        widgetsBar.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> fitWidgets());
     }
 
-    /** The chips' texts for one reading, in {@link #widgets} order; null where that figure cannot be read (the chip hides). */
-    private String[] widgetTexts(Readings r) {
-        String[] out = new String[widgets.size()];
-        Locale locale = getResources().getConfiguration().getLocales().get(0);
+    /** The space between two gauges, dp. */
+    static final float WIDGET_GAP_DP = 12f;
+
+    /**
+     * The gauges' percents for one reading, in {@link #widgets} order: RAM used of total, the CPU busy (or its clock's
+     * share of the top clock), storage used of total on /data; -1 where that figure cannot be read (the gauge hides).
+     */
+    private int[] widgetPercents(Readings r) {
+        int[] out = new int[widgets.size()];
         for (int i = 0; i < out.length; i++) {
-            String name = widgets.get(i), text = null;
-            if (Config.WIDGET_CPU.equals(name)) {
-                // Busy percent where the TV lets an app read it; the cores' clock where it does not (Android 10 hides
-                // /proc/stat from apps and this kernel has no cpuidle, but sysfs cpufreq is open to them).
-                if (r.cpu >= 0) text = getString(R.string.widget_cpu, r.cpu);
-                else if (r.cpuKhz > 0) text = getString(R.string.widget_cpu_freq, r.cpuKhz / 1_000_000f);
-            } else if (Config.WIDGET_MEMORY.equals(name)) {
-                if (r.mem != null) text = getString(R.string.widget_memory, Math.max(0, r.mem[1] - r.mem[0]));
-            } else {
-                String free = formatGb(getResources(), r.freeBytes);
-                if (!free.isEmpty()) text = getString(R.string.widget_storage, free);
-            }
-            out[i] = text == null ? null : StatsText.forLocale(text, locale);
+            String name = widgets.get(i);
+            out[i] = Config.WIDGET_CPU.equals(name) ? r.cpuGaugePercent()
+                    : Config.WIDGET_MEMORY.equals(name) ? r.memoryPercent() : r.storagePercent();
         }
         return out;
     }
 
-    private void showWidgetValues(String[] texts) {
-        for (int i = 0; i < widgetChips.size() && i < texts.length; i++) {
-            TextView chip = widgetChips.get(i);
-            if (texts[i] == null) {
-                chip.setVisibility(View.GONE);
+    private void showWidgetValues(int[] percents) {
+        for (int i = 0; i < widgetGauges.size() && i < percents.length; i++) {
+            GaugeView gauge = widgetGauges.get(i);
+            if (percents[i] < 0) {
+                gauge.setVisibility(View.GONE);
                 continue;
             }
-            if (!texts[i].contentEquals(chip.getText())) chip.setText(texts[i]);
-            chip.setVisibility(View.VISIBLE);
+            gauge.setPercent(percents[i]);
+            gauge.setVisibility(View.VISIBLE);
         }
-        fitWidgets();
-    }
-
-    /**
-     * The chips never reach the pills: their box ends where the pills start, and when the chips as they would like to
-     * be (icon, gap, text, padding) are wider than it, each gets an equal share and ends in an ellipsis. Back to their
-     * own width once they fit again. Set only on a change, so the layout it asks for does not run in a loop.
-     */
-    private void fitWidgets() {
-        if (widgetsBar == null || widgetsBar.getWidth() <= 0) return;
-        int shown = 0, want = 0, margins = 0;
-        for (TextView chip : widgetChips) {
-            if (chip.getVisibility() != View.VISIBLE) continue;
-            ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) chip.getLayoutParams();
-            if (shown > 0) margins += lp.getMarginStart();
-            shown++;
-            Drawable[] d = chip.getCompoundDrawablesRelative();
-            int icon = d[0] == null ? 0 : d[0].getIntrinsicWidth() + chip.getCompoundDrawablePadding();
-            want += chip.getPaddingStart() + chip.getPaddingEnd() + icon + Math.round(chip.getPaint().measureText(chip.getText().toString()));
-        }
-        if (shown == 0) return;
-        int available = widgetsBar.getWidth() - margins;
-        int max = want + margins > widgetsBar.getWidth() ? Math.max(Math.round(40 * density), available / shown) : Integer.MAX_VALUE;
-        for (TextView chip : widgetChips) if (chip.getMaxWidth() != max) chip.setMaxWidth(max);
     }
 
     // ---- date_two_lines --------------------------------------------------------------------------
@@ -3170,21 +3164,27 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         return Math.max(0, Math.min(100, busy));
     }
 
-    /** The cores' mean scaling_cur_freq in kHz (sysfs, which Android lets an app read), or 0 when no core answers. */
-    private static long cpuKhz() {
-        long sum = 0;
+    /**
+     * The cores' mean scaling_cur_freq as a percent of their cpuinfo_max_freq (sysfs, which Android lets an app read
+     * where it hides /proc/stat), or -1 when no core answers both.
+     */
+    private static int cpuFreqPercent() {
+        float sum = 0;
         int cores = 0;
         for (int i = 0; i < 8; i++) {
-            String t = readFirstLine("/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_cur_freq");
-            if (t == null) break;
+            String cur = readFirstLine("/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_cur_freq");
+            String max = readFirstLine("/sys/devices/system/cpu/cpu" + i + "/cpufreq/cpuinfo_max_freq");
+            if (cur == null || max == null) break;
             try {
-                sum += Long.parseLong(t.trim());
+                long c = Long.parseLong(cur.trim()), m = Long.parseLong(max.trim());
+                if (m <= 0) break;
+                sum += c / (float) m;
                 cores++;
             } catch (NumberFormatException e) {
                 break;
             }
         }
-        return cores == 0 ? 0 : sum / cores;
+        return cores == 0 ? -1 : Math.max(0, Math.min(100, Math.round(sum * 100f / cores)));
     }
 
     /** RAM usage as {used, total} in MB (MemInfo.usedOfTotalMb); null when /proc/meminfo cannot be read. */

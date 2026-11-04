@@ -228,7 +228,7 @@
                 android:orientation="horizontal"
                 android:gravity="right|bottom">
 
-                <!-- widgets: the Memory, CPU and Storage chips beside the date (on its left here), filled in code
+                <!-- widgets: the Memory, CPU and Storage ring gauges beside the date (on its left here), filled in code
                      (MainActivity setUpWidgets); gone, and nothing is read, while the list is empty. -->
                 <LinearLayout
                     android:id="@+id/widgets"

@@ -82,11 +82,16 @@ The launcher's own page has these rows, top to bottom:
 - **Open on start**, only with `open_on_start_choice`: Off, or an app that opens instead of Home the first
   time Home comes up after the TV starts. Once per boot, so Home and Back still reach the launcher.
 - **Hero banner height**: Compact (60%), Short (80%), Normal (100%) or Tall (120%), the top shelf's height;
-  a shorter shelf lifts the dock and shows more rows (`hero_height` in a theme). The row and its picker show the
+  a shorter shelf lifts the dock and shows more rows, and the shelf's text and spacing shrink with it so the
+  dots stay clear of the first row (`hero_height` in a theme). The row and its picker show the
   height in force: a saved choice, else the theme's `hero_height`, else with the default `0` (auto) Normal (100%)
   while the Trakt carousel is on and Short (80%) without it. A theme height outside the four joins the picker as
   its own row ("70%"). There is no Theme default entry; **Follow theme** (the full-screen page) or a theme push
   hands the choice back to the theme.
+- **Widgets** (side panel): a tick list of **Memory**, **CPU** and **Storage**, the frosted chips beside the date
+  (`widgets` in a theme); each tick is saved as it is made, the row names the chips that are on ("Memory, CPU,
+  Storage", or None), and the page shows the set in force, the theme's until you tick one. An empty tick list is a
+  saved none, so a theme's chips can all be turned off; a theme push hands the choice back to the theme.
 - **Trakt recommendations**: On or Off, the Trakt shelf companion's carousel on the top shelf (`hero_feed` in a
   theme); the row and its picker show the state in force, the theme's until you pick one. Off leaves the launcher exactly as with `hero_feed: false`: the shelf names the
   focused app and the companion is never read. The row is always there, and says when the Trakt shelf app is

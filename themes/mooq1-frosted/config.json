@@ -43,5 +43,7 @@
   "uniform_rows": true,
   "hero_feed": true,
   "hero_feed_interval": 8,
-  "row_gap": 32
+  "row_gap": 32,
+  "date_two_lines": true,
+  "widgets": ["memory", "cpu", "storage"]
 }

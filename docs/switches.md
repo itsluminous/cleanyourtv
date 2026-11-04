@@ -78,3 +78,5 @@ rule sit on its wanted list until a screenshot arrives.
 | `hero_feed_interval` | <img src="switches/hero_feed.jpg" width="320" alt="hero_feed_interval: the same carousel, one title every N seconds"> |
 | `row_gap` | <img src="../themes/mooq1-frosted/screenshot.jpg" width="320" alt="row_gap 32: the dock and the row under it about 30% closer"> |
 | `hero_height` | <img src="switches/hero_height.jpg" width="320" alt="hero_height 60 (Compact): a shorter shelf, the dock lifted and a second row showing under it"> |
+| `date_two_lines` | <img src="switches/date_two_lines.jpg" width="320" alt="date_two_lines: the day of the week over the day and month beside the clock, with the Memory, CPU and Storage widget chips to the right"> |
+| `widgets` | <img src="switches/date_two_lines.jpg" width="320" alt="widgets: the RAM, CPU and storage chips right of the date, before the pills"> |

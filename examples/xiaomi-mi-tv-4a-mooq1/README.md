@@ -76,13 +76,15 @@ The theme (`config.json` here, pushed from `themes/mooq1-frosted`):
 | `wallpaper: true`, `background_color: #101828`, `cinematic_home`, `cinematic_art: 35`, `glass_style: glass`, `glow_style: horizon`, `app_glow`, `advanced_effects`, `focus_overshoot: false` | | The frosted slate look: a pre-blurred wallpaper (the launcher never blurs at runtime), tiles floating on it with no band, the horizon glow in the app's colour. |
 | `icon_only_buttons`, `icon_only_inputs`, `pill_labels_on_focus`, `show_greeting: false`, `clock_format: system` | | Round icon-only pills that grow to their name while focused; no greeting. |
 | `tile_menu`, `launcher_settings_button`, `tv_settings_first`, `settings_panel` | | Hold OK on a tile for Move / Remove from Home / App info; a click on Settings opens the side panel with TV system settings first. |
+| `date_two_lines`, `widgets: ["memory", "cpu", "storage"]` | | The date beside the clock on two lines (`WEDNESDAY` over `4 NOVEMBER`), and three frosted chips to its right: RAM free, the CPU (this TV's Android 10 hides `/proc/stat` from apps and has no cpuidle, so the chip shows the cores' clock in GHz), free storage, read every 5 s while Home is on screen. The **Widgets** tick list in the panel turns each chip off or on. |
 | `shelf_every_row`, `hero_feed`, `hero_feed_interval: 8`, `row_gap: 32` | | Every row scrolls up to the same line under the shelf (`uniform_rows` turns this on by itself; the key stays for a launcher without it); the shelf is the Trakt carousel, one title every 8 seconds; rows about 30% closer. No `hero_height`: the first row rests on the shelf's bottom, the layout's own 100% while the carousel is on and 80% once it is turned off in the panel. |
 
 The settings panel also carries **Trakt recommendations** (On, Off: the carousel over the theme's `hero_feed`, so
 this theme runs without Trakt too; the picker marks On, the theme's state, until you pick), **Hero banner height**
 (Compact 60, Short 80, Normal 100, Tall 120; the picker marks the height in force, Normal (100%) with the carousel and
-Short (80%) without it, no "Theme default" entry) and **Backup & restore** (Back up settings, Restore from file, Import
-from another launcher). With `uniform_rows` the panel has no **Rows below dock** or **Dock band opacity** row, and
+Short (80%) without it, no "Theme default" entry; the shelf's text shrinks with the height, so Compact keeps its dots
+above the first row), **Widgets** (a tick list of Memory, CPU and Storage over the theme's `widgets`; the row names the
+chips that are on) and **Backup & restore** (Back up settings, Restore from file, Import from another launcher). With `uniform_rows` the panel has no **Rows below dock** or **Dock band opacity** row, and
 the panel never shows **Follow theme** or **Wallpaper**: a choice saved on the TV is cleared by pushing the theme again
 (`tools/theme.sh themes/mooq1-frosted`; every push writes a new `theme_revision`, and `Config.syncThemeChoices` drops
 every saved choice when that changes) or by **Restore from file**. See the

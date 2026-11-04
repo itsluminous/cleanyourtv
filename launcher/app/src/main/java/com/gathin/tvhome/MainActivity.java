@@ -2486,7 +2486,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /**
      * The top-bar pills over the carousel's backdrop: the same frost over a dark base (pill_bg_over_art), so their white
      * icons read over a bright sky as well as over the wallpaper; back to pill_bg when no backdrop is behind them. The
-     * VPN pill is left alone, its own drawable is dark glass already. The padding is kept across the swap.
+     * VPN pill is left alone, its own drawable is dark glass already. The padding is kept across the swap. The ring
+     * gauges (widgets) draw the same frost and get the same base (GaugeView.setOverArt).
      */
     private void setPillsOverArt(boolean on) {
         if (pillsOverArt == on) return;
@@ -2498,6 +2499,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             pill.setBackgroundResource(bg);
             pill.setPadding(l, t, r, b);
         }
+        for (GaugeView gauge : widgetGauges) gauge.setOverArt(on);   // the widgets' discs are glass like the pills
     }
 
     /**
@@ -2900,6 +2902,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         cpuTotalPrev = -1;
         idlePrev = -1;
         procStatDead = false;
+        cpuSmoother.reset();
         statsThread = new HandlerThread("stats");
         statsThread.start();
         // Each start gets its own handler, held by its task: stopStats on the main thread can clear the field
@@ -2948,8 +2951,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      */
     static final class Readings {
         int cpu = -1;
-        /** The cores' mean clock as a percent of their top clock, read when the busy percent cannot be; -1 if neither. */
-        int cpuFreqPercent = -1;
+        /**
+         * How far the cores are clocked above idle (CpuLoad), read when the busy percent cannot be; -1 if neither.
+         * Smoothed over the last readings (CpuLoad.Smoother) before it gets here.
+         */
+        int cpuClockLoad = -1;
         long[] mem;
         long freeBytes, totalBytes;
 
@@ -2963,9 +2969,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return totalBytes <= 0 ? -1 : percentOf(totalBytes - freeBytes, totalBytes);
         }
 
-        /** The CPU gauge's percent: busy where the TV lets an app read it, the clock's share of its top otherwise. */
+        /** The CPU gauge's percent: busy where the TV lets an app read it, the clock's load above idle otherwise. */
         int cpuGaugePercent() {
-            return cpu >= 0 ? cpu : cpuFreqPercent;
+            return cpu >= 0 ? cpu : cpuClockLoad;
         }
 
         static int percentOf(long part, long whole) {
@@ -2988,7 +2994,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             cpu = cpuPercent();
         }
         r.cpu = cpu;
-        if (cpu < 0 && !widgets.isEmpty()) r.cpuFreqPercent = cpuFreqPercent();
+        if (cpu < 0 && !widgets.isEmpty()) r.cpuClockLoad = cpuSmoother.next(cpuClockLoad());
         r.mem = memUsedOfTotalMb();
         java.io.File data = Environment.getDataDirectory();
         r.freeBytes = data.getFreeSpace();
@@ -3010,10 +3016,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     // ---- widgets: the ring gauges beside the date (config.xml widgets, the Widgets tick list) -----
 
     /**
-     * widgets: one ring gauge per name (GaugeView: a frost track, an arc for the percent full, the percent inside and
-     * a caps label under it), in the row that holds the clock and the date, right of the date, 12dp apart. The date's
-     * column gives up its stretch so the gauges follow the date rather than the pills; three fixed-width gauges are
-     * about 160dp, so they always fit before the pills. Each shows once its first reading is in (startStats).
+     * widgets: one ring gauge per name (GaugeView: a frosted disc in the pills' finish, a track ring, an arc for the
+     * percent full, the percent inside and a caps label under it), in the row that holds the clock and the date,
+     * right of the date, 12dp apart. The date's column gives up its stretch so the gauges follow the date rather than
+     * the pills; three gauges of one fixed width (48dp) are 168dp with their gaps, so they always fit before the
+     * pills. Each shows once its first reading is in (startStats).
      */
     private void setUpWidgets(List<String> names) {
         widgets = names;
@@ -3047,14 +3054,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             widgetsBar.addView(gauge, glp);
             widgetGauges.add(gauge);
         }
+        // One label size for the row: the smallest any label needs to fit its gauge (STORAGE is wider than RAM).
+        float sp = GaugeView.LABEL_SP;
+        for (GaugeView gauge : widgetGauges) sp = Math.min(sp, gauge.fittedLabelSp());
+        for (GaugeView gauge : widgetGauges) gauge.setLabelSp(sp);
+        for (GaugeView gauge : widgetGauges) gauge.setOverArt(pillsOverArt);
     }
 
     /** The space between two gauges, dp. */
     static final float WIDGET_GAP_DP = 12f;
 
     /**
-     * The gauges' percents for one reading, in {@link #widgets} order: RAM used of total, the CPU busy (or its clock's
-     * share of the top clock), storage used of total on /data; -1 where that figure cannot be read (the gauge hides).
+     * The gauges' percents for one reading, in {@link #widgets} order: RAM used of total, the CPU busy (or how far its
+     * clock is above idle), storage used of total on /data; -1 where that figure cannot be read (the gauge hides).
      */
     private int[] widgetPercents(Readings r) {
         int[] out = new int[widgets.size()];
@@ -3190,27 +3202,47 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         return Math.max(0, Math.min(100, busy));
     }
 
+    /** Smooths the clock load between readings; reset with each start of the stats thread. */
+    private final CpuLoad.Smoother cpuSmoother = new CpuLoad.Smoother();
+
     /**
-     * The cores' mean scaling_cur_freq as a percent of their cpuinfo_max_freq (sysfs, which Android lets an app read
-     * where it hides /proc/stat), or -1 when no core answers both.
+     * How far the cores are clocked above idle, percent (CpuLoad.percent): per core scaling_cur_freq against the
+     * floor and cpuinfo_max_freq, from sysfs, which Android lets an app read where it hides /proc/stat. The floor
+     * is the smallest of scaling_available_frequencies, or cpuinfo_min_freq (CpuLoad.floor). -1 when no core
+     * answers; a core that does not answer ends the scan, the online cores come first.
      */
-    private static int cpuFreqPercent() {
-        float sum = 0;
+    private static int cpuClockLoad() {
+        long[] cur = new long[8], floor = new long[8], top = new long[8];
         int cores = 0;
         for (int i = 0; i < 8; i++) {
-            String cur = readFirstLine("/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_cur_freq");
-            String max = readFirstLine("/sys/devices/system/cpu/cpu" + i + "/cpufreq/cpuinfo_max_freq");
-            if (cur == null || max == null) break;
+            String dir = "/sys/devices/system/cpu/cpu" + i + "/cpufreq/";
+            String c = readFirstLine(dir + "scaling_cur_freq");
+            String m = readFirstLine(dir + "cpuinfo_max_freq");
+            if (c == null || m == null) break;
             try {
-                long c = Long.parseLong(cur.trim()), m = Long.parseLong(max.trim());
-                if (m <= 0) break;
-                sum += c / (float) m;
+                long t = Long.parseLong(m.trim());
+                if (t <= 0) break;
+                String min = readFirstLine(dir + "cpuinfo_min_freq");
+                long minFreq = -1;
+                if (min != null) {
+                    try {
+                        minFreq = Long.parseLong(min.trim());
+                    } catch (NumberFormatException ignored) {
+                        // no usable cpuinfo_min_freq: the table alone, then
+                    }
+                }
+                long f = CpuLoad.floor(readFirstLine(dir + "scaling_available_frequencies"), minFreq, t);
+                cur[cores] = Long.parseLong(c.trim());
+                top[cores] = t;
+                floor[cores] = f < 0 ? t : f;      // no floor below the top: this core counts as 0
                 cores++;
             } catch (NumberFormatException e) {
                 break;
             }
         }
-        return cores == 0 ? -1 : Math.max(0, Math.min(100, Math.round(sum * 100f / cores)));
+        if (cores == 0) return -1;
+        return CpuLoad.percent(java.util.Arrays.copyOf(cur, cores), java.util.Arrays.copyOf(floor, cores),
+                java.util.Arrays.copyOf(top, cores));
     }
 
     /** RAM usage as {used, total} in MB (MemInfo.usedOfTotalMb); null when /proc/meminfo cannot be read. */

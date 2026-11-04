@@ -18,14 +18,14 @@ public class GaugeTest {
     }
 
     @Test
-    public void theCpuRingIsBusyWhenReadableAndTheClocksShareOtherwise() {
+    public void theCpuRingIsBusyWhenReadableAndTheClockLoadOtherwise() {
         MainActivity.Readings r = new MainActivity.Readings();
         r.cpu = 8;
-        r.cpuFreqPercent = 55;
+        r.cpuClockLoad = 55;
         assertEquals(8, r.cpuGaugePercent());
         r.cpu = -1;
-        assertEquals(55, r.cpuGaugePercent());       // Android 10 hides /proc/stat: scaling_cur_freq / cpuinfo_max_freq
-        r.cpuFreqPercent = -1;
+        assertEquals(55, r.cpuGaugePercent());       // Android 10 hides /proc/stat: how far the clocks are above idle
+        r.cpuClockLoad = -1;
         assertEquals(-1, r.cpuGaugePercent());       // neither: the gauge hides
     }
 
@@ -50,9 +50,27 @@ public class GaugeTest {
     public void threeGaugesWithTheirGapsFitBeforeThePills() {
         float d = 2f;
         int width = 3 * GaugeView.widthPx(d) + 2 * Math.round(MainActivity.WIDGET_GAP_DP * d);
-        assertEquals(312, width);                                    // 156dp at 1080p
-        assertEquals(122, GaugeView.heightPx(d));                    // 61dp: inside the clock row's 65dp
-        assertEquals(88, GaugeView.widthPx(d, 60f));                 // a short label: the ring's width
-        assertEquals(104, GaugeView.widthPx(d, 102f));               // STORAGE is wider than the ring: the gauge grows to it
+        assertEquals(336, width);                                    // 168dp at 1080p
+        assertEquals(96, GaugeView.widthPx(d));                      // 48dp: the ring's 44 and 2 each side, whatever the label
+        assertEquals(128, GaugeView.heightPx(d));                    // 64dp: inside the clock row's 65dp
+    }
+
+    @Test
+    public void aLabelWiderThanTheGaugeShrinksInsteadOfWideningIt() {
+        int gauge = GaugeView.widthPx(2f);                           // 96px; the label has 94
+        assertEquals(10f, GaugeView.fitLabelSp(60f, gauge), 0f);     // RAM, CPU: full size
+        assertEquals(10f, GaugeView.fitLabelSp(94f, gauge), 0f);     // just fits
+        assertEquals(9f, GaugeView.fitLabelSp(99f, gauge), 0f);      // STORAGE at 1080p: 10 * 94 / 99 = 9.49 -> 9
+        assertEquals(8.5f, GaugeView.fitLabelSp(108f, gauge), 0f);   // 8.70 -> 8.5
+        assertEquals(7f, GaugeView.fitLabelSp(200f, gauge), 0f);     // never below 7sp
+        assertEquals(10f, GaugeView.fitLabelSp(0f, gauge), 0f);      // no label: full size
+    }
+
+    @Test
+    public void theGlassIsThePillsFrost() {
+        assertEquals(0x2EFFFFFF, GaugeView.FROST_TOP);               // pill_bg's gradient start
+        assertEquals(0x14FFFFFF, GaugeView.FROST_BOTTOM);            // and end
+        assertEquals(0x38FFFFFF, GaugeView.RIM);                     // and its 1dp stroke
+        assertEquals(0x66000000, GaugeView.OVER_ART_BASE);           // pill_bg_over_art's base
     }
 }

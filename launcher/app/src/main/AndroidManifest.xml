@@ -72,6 +72,9 @@
              Both names are listed because either build may be the one asking (Backup.KNOWN_PACKAGES). -->
         <provider android:authorities="com.gathin.tvhome.backup" />
         <provider android:authorities="com.itsluminous.tvhome.backup" />
+        <!-- hero_feed: the Trakt shelf companion's provider (HeroFeed.ITEMS), and the Launcher settings row that says
+             when that app is not installed. -->
+        <provider android:authorities="com.itsluminous.traktshelf.hero" />
     </queries>
 
     <application

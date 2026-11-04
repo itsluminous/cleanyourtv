@@ -3,9 +3,13 @@ package com.gathin.tvhome;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-/** hero_height: the Launcher settings choice over the theme's key, and the tile fit's title room scaling with it. */
+/**
+ * hero_height: the Launcher settings choice over the theme's key, the theme's 0 (auto) following the carousel, and the
+ * tile fit's title room scaling with it; and the Trakt recommendations toggle (hero_feed) over the theme's key.
+ */
 public class HeroHeightTest {
 
     private static final float D = 2f;
@@ -13,18 +17,77 @@ public class HeroHeightTest {
 
     @Test
     public void aSavedChoiceInRangeOverridesTheTheme() {
-        assertEquals(60, Config.chosenHeroHeight(60, 100));
-        assertEquals(120, Config.chosenHeroHeight(120, 80));
-        assertEquals(50, Config.chosenHeroHeight(Config.HERO_HEIGHT_MIN, 100));
-        assertEquals(130, Config.chosenHeroHeight(Config.HERO_HEIGHT_MAX, 100));
+        assertEquals(60, Config.chosenHeroHeight(60, 100, true));
+        assertEquals(120, Config.chosenHeroHeight(120, 80, false));
+        assertEquals(50, Config.chosenHeroHeight(Config.HERO_HEIGHT_MIN, 100, true));
+        assertEquals(130, Config.chosenHeroHeight(Config.HERO_HEIGHT_MAX, 100, true));
+        // A saved choice wins over the auto rule too, whatever the carousel does.
+        assertEquals(60, Config.chosenHeroHeight(60, Config.HERO_HEIGHT_AUTO, true));
+        assertEquals(120, Config.chosenHeroHeight(120, Config.HERO_HEIGHT_AUTO, false));
     }
 
     @Test
     public void noChoiceOrAnOutOfRangeOneLeavesTheTheme() {
-        assertEquals(80, Config.chosenHeroHeight(-1, 80));
-        assertEquals(100, Config.chosenHeroHeight(0, 100));
-        assertEquals(100, Config.chosenHeroHeight(49, 100));
-        assertEquals(100, Config.chosenHeroHeight(131, 100));
+        assertEquals(80, Config.chosenHeroHeight(-1, 80, true));
+        assertEquals(100, Config.chosenHeroHeight(0, 100, false));
+        assertEquals(100, Config.chosenHeroHeight(49, 100, false));
+        assertEquals(100, Config.chosenHeroHeight(131, 100, false));
+        assertEquals(70, Config.chosenHeroHeight(-1, 70, false));   // a named theme height ignores the carousel
+    }
+
+    @Test
+    public void theThemesAutoFollowsTheCarousel() {
+        assertEquals(0, Config.HERO_HEIGHT_AUTO);
+        assertEquals(100, Config.HERO_HEIGHT_WITH_FEED);
+        assertEquals(80, Config.HERO_HEIGHT_WITHOUT_FEED);
+        assertEquals(100, Config.autoHeroHeight(true));
+        assertEquals(80, Config.autoHeroHeight(false));
+        assertEquals(100, Config.chosenHeroHeight(-1, Config.HERO_HEIGHT_AUTO, true));
+        assertEquals(80, Config.chosenHeroHeight(-1, Config.HERO_HEIGHT_AUTO, false));
+        // An out-of-range saved choice is no choice: auto still decides.
+        assertEquals(80, Config.chosenHeroHeight(49, Config.HERO_HEIGHT_AUTO, false));
+        assertEquals(100, Config.chosenHeroHeight(131, Config.HERO_HEIGHT_AUTO, true));
+        // Normal in the panel is the feed's auto height, Short the shelf's without it.
+        assertEquals(SettingsPanel.HERO_HEIGHTS[2], Config.HERO_HEIGHT_WITH_FEED);
+        assertEquals(SettingsPanel.HERO_HEIGHTS[1], Config.HERO_HEIGHT_WITHOUT_FEED);
+    }
+
+    @Test
+    public void aThemeKeyIsAutoOrInRange() {
+        assertEquals(0, Config.heroHeightKey(0, 100));
+        assertEquals(60, Config.heroHeightKey(60, 0));
+        assertEquals(50, Config.heroHeightKey(50, 0));
+        assertEquals(130, Config.heroHeightKey(130, 0));
+        assertEquals(0, Config.heroHeightKey(49, 0));      // out of range: the default stays
+        assertEquals(0, Config.heroHeightKey(131, 0));
+        assertEquals(0, Config.heroHeightKey(-1, 0));
+        assertEquals(100, Config.heroHeightKey(1, 100));
+    }
+
+    @Test
+    public void theTraktToggleOverridesTheThemesHeroFeed() {
+        // 1 on, 0 off, unset (-1) leaves the theme's key.
+        assertTrue(Config.chosenHeroFeed(1, false));
+        assertTrue(Config.chosenHeroFeed(1, true));
+        assertFalse(Config.chosenHeroFeed(0, true));
+        assertFalse(Config.chosenHeroFeed(0, false));
+        assertTrue(Config.chosenHeroFeed(-1, true));
+        assertFalse(Config.chosenHeroFeed(-1, false));
+        // Anything else saved is no choice.
+        assertTrue(Config.chosenHeroFeed(7, true));
+        assertFalse(Config.chosenHeroFeed(7, false));
+    }
+
+    @Test
+    public void theToggleDecidesTheAutoHeight() {
+        // mooq1-frosted: hero_feed true, no hero_height. Theme default is 100; Off in the panel makes it 80.
+        boolean feed = Config.chosenHeroFeed(-1, true);
+        assertEquals(100, Config.chosenHeroHeight(-1, Config.HERO_HEIGHT_AUTO, feed));
+        feed = Config.chosenHeroFeed(0, true);
+        assertEquals(80, Config.chosenHeroHeight(-1, Config.HERO_HEIGHT_AUTO, feed));
+        // A theme without the carousel, turned on from the panel: 100.
+        feed = Config.chosenHeroFeed(1, false);
+        assertEquals(100, Config.chosenHeroHeight(-1, Config.HERO_HEIGHT_AUTO, feed));
     }
 
     @Test
@@ -33,7 +96,7 @@ public class HeroHeightTest {
         assertEquals(4, levels.length);
         for (int pct : levels) {
             assertTrue(pct >= Config.HERO_HEIGHT_MIN && pct <= Config.HERO_HEIGHT_MAX);
-            assertEquals(pct, Config.chosenHeroHeight(pct, 100));
+            assertEquals(pct, Config.chosenHeroHeight(pct, 100, true));
         }
         assertEquals(100, levels[2]);   // Normal is the layout's own
     }

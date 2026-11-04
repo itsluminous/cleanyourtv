@@ -1160,12 +1160,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onResume() {
         super.onResume();
         resumed = true;
-        if (heroFeed != null) {
-            heroFeed.start();
-            // The carousel owns the shelf while the companion has items: re-arm its timer, or put it up now.
-            if (carouselShowing) showCarouselItem(false);
-            else if (heroOwned() && heroShown && shelfTileFocused()) showCarousel(false);
-        }
         // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(LocalDate.now())) {
             recreate();
@@ -1173,10 +1167,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         // Something changed in Launcher settings: rebuild with it, however the settings were left. Only Back
         // delivered their RESULT_OK; Home (the remote's button) clears them off this task and the result comes
-        // back cancelled, so a new wallpaper or layout waited for the next process start.
+        // back cancelled, so a new wallpaper or layout waited for the next process start. Before the carousel's
+        // reader starts: with Trakt recommendations just turned off, the rebuilt Home has no reader at all.
         if (Config.settingsChanged(settingsRevision, settingsRevision())) {
             recreate();
             return;
+        }
+        if (heroFeed != null) {
+            heroFeed.start();
+            // The carousel owns the shelf while the companion has items: re-arm its timer, or put it up now.
+            if (carouselShowing) showCarouselItem(false);
+            else if (heroOwned() && heroShown && shelfTileFocused()) showCarousel(false);
         }
         restartIdleClock();
         promptsPaused = false;

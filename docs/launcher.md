@@ -76,7 +76,13 @@ The launcher's own page has these rows, top to bottom:
 - **Open on start**, only with `open_on_start_choice`: Off, or an app that opens instead of Home the first
   time Home comes up after the TV starts. Once per boot, so Home and Back still reach the launcher.
 - **Hero banner height**: Compact (60%), Short (80%), Normal (100%), Tall (120%) or Theme default, the top
-  shelf's height; a shorter shelf lifts the dock and shows more rows (`hero_height` in a theme).
+  shelf's height; a shorter shelf lifts the dock and shows more rows (`hero_height` in a theme). Theme default
+  names the value it gives, "Theme default (80%)" say: the theme's `hero_height`, or with the default `0` (auto)
+  100 while the Trakt carousel is on and 80 without it.
+- **Trakt recommendations**: On, Off or Theme default, the Trakt shelf companion's carousel on the top shelf
+  (`hero_feed` in a theme). Off leaves the launcher exactly as with `hero_feed: false`: the shelf names the
+  focused app and the companion is never read. The row is always there, and says when the Trakt shelf app is
+  not installed.
 - **Backup & restore**: **Back up settings** writes every preference, the app order, hidden apps, the dock,
   module-card approvals and the theme to one JSON file under `/sdcard/Android/data/<package>/files/backup/`;
   **Restore from file** lists that folder and replaces everything from the file you pick; **Import from another

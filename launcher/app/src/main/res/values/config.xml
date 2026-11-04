@@ -446,7 +446,9 @@
          shelf: moving between tiles leaves it alone and the focused app's name shows under its tile instead (with
          shelf_every_row the rows still scroll to the dock's line). Up from the dock focuses the carousel, Left/Right
          move it, OK opens the title in that app, Down or Back returns to the tile. Without the app, or with nothing
-         in it, the shelf is as before. Needs dock_row. Off by default; a theme can set "hero_feed": true. -->
+         in it, the shelf is as before. Needs dock_row. Off by default; a theme can set "hero_feed": true. The Trakt
+         recommendations row in Launcher settings (On, Off, Theme default) overrides this key on the TV: Off is exactly
+         "hero_feed": false, whatever the theme says. -->
     <bool name="hero_feed">false</bool>
     <integer name="hero_feed_interval">8</integer>
     <!-- row_gap: the space from the bottom of a tile to the top of the tile in the next row, in dp, in the dock_row
@@ -460,9 +462,11 @@
          in proportion and more rows show; the carousel keeps to the room it has (two synopsis lines at 80 and below,
          one line, no rating chips and a smaller title at 60 and below), its backdrop shrinks with the shelf, and the
          header with the clock and the pills never moves. Above 100 the dock sits lower and the rows below it run off
-         the bottom until you press Down. A choice made in Launcher settings (Hero banner height) overrides this; a
-         theme can set "hero_height": 60 for a compact shelf. -->
-    <integer name="hero_height">100</integer>
+         the bottom until you press Down. 0, the default, is auto: 100 while the hero_feed carousel is on (the theme's
+         key, as the Trakt recommendations toggle in Launcher settings leaves it) and 80 without it, where the app's
+         name alone needs less room. A choice made in Launcher settings (Hero banner height) overrides this; a theme
+         can set "hero_height": 60 for a compact shelf. -->
+    <integer name="hero_height">0</integer>
 
     <!-- Apps pre-seeded into the App library's "added" set at startup (config.xml library_apps, or a theme's
          config.json). They show on Home as if the owner had added them in the App library UI, and stay

@@ -141,22 +141,36 @@ final class SettingsPanel {
                         save(e -> e.putInt(Config.DOCK_OPACITY_KEY, DOCK_OPACITIES[which])));
             });
             // Hero banner height: the shelf's share of the room above the dock. A saved choice overrides the theme's
-            // hero_height; "Theme default" removes it, so the theme's key (100 unless it says otherwise) decides again.
+            // hero_height; "Theme default" removes it, so the theme's key decides again: its own percent, or with 0
+            // (auto) 100 while the Trakt carousel is on and 80 without it, the value shown in the brackets.
             int chosenHero = choices.getInt(Config.HERO_HEIGHT_KEY, -1);
-            row(R.drawable.ic_picture, activity.getString(R.string.hero_height_label), heroHeightLabel(chosenHero, config.heroHeight), v -> {
+            row(R.drawable.ic_picture, activity.getString(R.string.hero_height_label), heroHeightLabel(chosenHero), v -> {
                 String[] labels = new String[HERO_HEIGHTS.length + 1];
                 int checked = HERO_HEIGHTS.length;
                 for (int i = 0; i < HERO_HEIGHTS.length; i++) {
-                    labels[i] = heroHeightLabel(HERO_HEIGHTS[i], HERO_HEIGHTS[i]);
+                    labels[i] = heroHeightLabel(HERO_HEIGHTS[i]);
                     if (HERO_HEIGHTS[i] == chosenHero) checked = i;
                 }
-                labels[HERO_HEIGHTS.length] = activity.getString(R.string.wallpaper_theme_default);
+                labels[HERO_HEIGHTS.length] = heroHeightLabel(-1);
                 choose(activity.getString(R.string.hero_height_label), labels, checked, which -> save(e -> {
                     if (which == HERO_HEIGHTS.length) e.remove(Config.HERO_HEIGHT_KEY);
                     else e.putInt(Config.HERO_HEIGHT_KEY, HERO_HEIGHTS[which]);
                 }));
             });
         }
+        // Trakt recommendations (hero_feed): the carousel on the top shelf, over the theme's key. Always offered, so a
+        // TV without the companion can keep it off whatever theme it runs; the value says when that app is missing.
+        int chosenFeed = choices.getInt(Config.HERO_FEED_KEY, -1);
+        String feedState = heroFeedLabel(chosenFeed);
+        if (!heroFeedInstalled()) feedState += " \u00b7 " + activity.getString(R.string.hero_feed_not_installed);
+        row(R.drawable.ic_livetv, activity.getString(R.string.hero_feed_label), feedState, v -> {
+            String[] labels = {onOff(true), onOff(false), heroFeedLabel(-1)};
+            int checked = chosenFeed == 1 ? 0 : chosenFeed == 0 ? 1 : 2;
+            choose(activity.getString(R.string.hero_feed_label), labels, checked, which -> save(e -> {
+                if (which == 2) e.remove(Config.HERO_FEED_KEY);
+                else e.putInt(Config.HERO_FEED_KEY, which == 0 ? 1 : 0);
+            }));
+        });
         String clock = choices.getString(Config.CLOCK_FORMAT_KEY, config.clockFormat);
         String[] clockLabels = {activity.getString(R.string.clock_format_system),
                 activity.getString(R.string.clock_format_12), activity.getString(R.string.clock_format_24)};
@@ -189,7 +203,7 @@ final class SettingsPanel {
             choices.edit().remove("columns").remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
                     .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY)
                     .remove(Config.DOCK_OPACITY_KEY).remove(Config.CLOCK_FORMAT_KEY).remove(Config.HERO_HEIGHT_KEY)
-                    .remove(OpenOnStart.KEY).commit();
+                    .remove(Config.HERO_FEED_KEY).remove(OpenOnStart.KEY).commit();
             changed.run();
             showMain();
         });
@@ -374,20 +388,40 @@ final class SettingsPanel {
                 || choices.contains("animations") || choices.contains("advanced_effects")
                 || choices.contains(Config.WALLPAPER_CHOICE_KEY) || choices.contains(Config.DOCK_OPACITY_KEY)
                 || choices.contains(Config.CLOCK_FORMAT_KEY) || choices.contains(Config.HERO_HEIGHT_KEY)
-                || choices.contains(OpenOnStart.KEY);
+                || choices.contains(Config.HERO_FEED_KEY) || choices.contains(OpenOnStart.KEY);
     }
 
     /**
-     * The hero height row's value: the named level with its percent ("Short (80%)") when the percent is one of the four,
-     * the bare percent otherwise (a theme's 70, say); {@code chosen} is the saved choice, -1 for none, and then the
-     * theme's value shows.
+     * The hero height row's value: the named level with its percent ("Short (80%)") for one of the four levels, and
+     * for {@code chosen} -1, no choice, "Theme default" with the percent the theme resolves to (its hero_height, or
+     * the auto rule's 100 or 80 by the carousel as the Trakt row leaves it now), so the owner sees what handing the
+     * choice back gives, and the bracket follows a Trakt choice made on this visit.
      */
-    private String heroHeightLabel(int chosen, int theme) {
-        int pct = chosen > 0 ? chosen : theme;
-        for (int i = 0; i < HERO_HEIGHTS.length; i++) {
-            if (HERO_HEIGHTS[i] == pct) return activity.getString(HERO_HEIGHT_NAMES[i]) + " (" + pct + "%)";
+    private String heroHeightLabel(int chosen) {
+        if (chosen < 0) {
+            boolean feed = Config.chosenHeroFeed(choices.getInt(Config.HERO_FEED_KEY, -1), config.themeHeroFeed);
+            int pct = Config.chosenHeroHeight(-1, config.themeHeroHeight, feed);
+            return activity.getString(R.string.wallpaper_theme_default) + " (" + pct + "%)";
         }
-        return pct + "%";
+        for (int i = 0; i < HERO_HEIGHTS.length; i++) {
+            if (HERO_HEIGHTS[i] == chosen) return activity.getString(HERO_HEIGHT_NAMES[i]) + " (" + chosen + "%)";
+        }
+        return chosen + "%";
+    }
+
+    /** The Trakt recommendations row's value: On, Off, or "Theme default (On)" with what the theme's hero_feed says. */
+    private String heroFeedLabel(int chosen) {
+        if (chosen == 1 || chosen == 0) return onOff(chosen == 1);
+        return activity.getString(R.string.wallpaper_theme_default) + " (" + onOff(config.themeHeroFeed) + ")";
+    }
+
+    /** True while the Trakt shelf companion's provider (HeroFeed.ITEMS) is on the TV. */
+    private boolean heroFeedInstalled() {
+        try {
+            return activity.getPackageManager().resolveContentProvider(HeroFeed.ITEMS.getAuthority(), 0) != null;
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     private void open(Intent intent) {

@@ -58,6 +58,9 @@
     <string name="hero_height_short">Short</string>
     <string name="hero_height_normal">Normal</string>
     <string name="hero_height_tall">Tall</string>
+    <!-- hero_feed: the Launcher settings row that turns the Trakt carousel on or off over the theme's key. -->
+    <string name="hero_feed_label">Trakt recommendations</string>
+    <string name="hero_feed_not_installed">Trakt shelf app not installed</string>
     <string name="wallpaper_label">Wallpaper</string>
     <string name="wallpaper_state">Wallpaper: %1$s</string>
     <string name="wallpaper_none">None</string>

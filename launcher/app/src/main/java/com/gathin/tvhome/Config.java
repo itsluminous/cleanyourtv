@@ -48,6 +48,16 @@ final class Config {
     static final String HERO_HEIGHT_KEY = "hero_height";
     static final int HERO_HEIGHT_MIN = 50, HERO_HEIGHT_MAX = 130;
     /**
+     * hero_height 0, the default: the shelf is the layout's own 100 while the carousel is on (hero_feed, after the
+     * Launcher settings toggle) and 80 without it, where the app's name alone does not need the room.
+     */
+    static final int HERO_HEIGHT_AUTO = 0, HERO_HEIGHT_WITH_FEED = 100, HERO_HEIGHT_WITHOUT_FEED = 80;
+    /**
+     * The Trakt recommendations toggle in Launcher settings: 1 on, 0 off, unset means the theme's hero_feed decides.
+     * Off leaves the launcher exactly as with "hero_feed": false (the shelf names the app, no provider is read).
+     */
+    static final String HERO_FEED_KEY = "hero_feed";
+    /**
      * Counts the changes made in Launcher settings. Home remembers the count it was built with and rebuilds on
      * resume when it differs, however the settings were left (see MainActivity#onResume).
      */
@@ -173,8 +183,13 @@ final class Config {
     final boolean settingsPanel;
     /** Every row behaves like the dock: the focused row scrolls up under the shelf, which names its app (shelf_every_row). */
     final boolean shelfEveryRow;
-    /** The top shelf cycles the Trakt companion's items while the dock is at rest (hero_feed), every heroFeedInterval seconds. */
+    /**
+     * The top shelf cycles the Trakt companion's items while the dock is at rest (hero_feed), every heroFeedInterval
+     * seconds; the Trakt recommendations toggle in Launcher settings (HERO_FEED_KEY) overrides the theme's key.
+     */
     final boolean heroFeed;
+    /** The theme's hero_feed before the Launcher settings toggle, what the toggle's "Theme default" means. */
+    final boolean themeHeroFeed;
     final int heroFeedInterval;
     /** Tile bottom to the next row's tile top, in dp (row_gap); AppAdapter.ITEM_EXTRA_DP is the layout's own 45. */
     final int rowGap;
@@ -184,6 +199,11 @@ final class Config {
      * lines, chips and title size to fit.
      */
     final int heroHeight;
+    /**
+     * The theme's hero_height before the Launcher settings choice: 0 (auto) or 50 to 130. What "Theme default" in
+     * Launcher settings hands the choice back to; chosenHeroHeight(-1, themeHeroHeight, feed) is the value it gives.
+     */
+    final int themeHeroHeight;
     /** Icon on a card tinted from that icon, instead of the app's banner (config.xml uniform_tiles). */
     final boolean uniformTiles;
     /** Background colour behind everything, #RRGGBB; black unless a theme says otherwise. */
@@ -308,7 +328,7 @@ final class Config {
                    String sourcePanelExtra, boolean coocaaSources, String inputAction, List<String> inputSources,
                    String inputUriScheme, int columns, int rowsBelowDock, boolean animations, boolean advancedEffects,
                    boolean shamsiDate, String greetingName, boolean moduleCards, boolean reducedMotion, boolean bootToLiveTv, boolean openOnStartChoice, boolean dockTitle, boolean dockRow, boolean topMenu, boolean launcherSettingsButton, boolean reorderButton, boolean showNetworkPill, boolean showInputsPill, boolean iconOnlyButtons, boolean iconOnlyInputs, boolean libraryButton, boolean showLibraryPill, int wifiLabelWidth, boolean alwaysShowNames, boolean wallpaperTrueColor, boolean focusOvershoot, String vpnApp,
-                   boolean showHomeSettingsShortcut, boolean showStats, String gameDay, boolean appLibrary, boolean appLibrarySelection, boolean libraryOkOpens, int libraryColumns, boolean pillLabelsOnFocus, boolean tvSettingsFirst, boolean settingsPanel, boolean shelfEveryRow, boolean heroFeed, int heroFeedInterval, int rowGap, int heroHeight, boolean uniformTiles, int backgroundColor, int skyIntensity,
+                   boolean showHomeSettingsShortcut, boolean showStats, String gameDay, boolean appLibrary, boolean appLibrarySelection, boolean libraryOkOpens, int libraryColumns, boolean pillLabelsOnFocus, boolean tvSettingsFirst, boolean settingsPanel, boolean shelfEveryRow, boolean heroFeed, boolean themeHeroFeed, int heroFeedInterval, int rowGap, int heroHeight, int themeHeroHeight, boolean uniformTiles, int backgroundColor, int skyIntensity,
                    int[] settingsKeycodes, boolean settingsKeyPanel, boolean restoreKeyServices, boolean wallpaperEnabled, File wallpaper, List<File> wallpapers,
                    int wallpaperRotationMinutes, int wallpaperDim, int dockOpacity, String wallpaperOrder, boolean overlayApplied,
                    Festival festival, int[] inputKeycodes, List<String> appKeys, String stockHomeRedirect,
@@ -387,9 +407,11 @@ final class Config {
         this.settingsPanel = settingsPanel;
         this.shelfEveryRow = shelfEveryRow;
         this.heroFeed = heroFeed;
+        this.themeHeroFeed = themeHeroFeed;
         this.heroFeedInterval = heroFeedInterval;
         this.rowGap = rowGap;
         this.heroHeight = heroHeight;
+        this.themeHeroHeight = themeHeroHeight;
         this.uniformTiles = uniformTiles;
         this.backgroundColor = backgroundColor;
         this.skyIntensity = skyIntensity;
@@ -654,7 +676,7 @@ final class Config {
             heroFeed = bool(json, "hero_feed", heroFeed);
             heroFeedInterval = integer(json, "hero_feed_interval", heroFeedInterval, 3, 120);
             rowGap = integer(json, "row_gap", rowGap, 29, 90);  // 29 is AppAdapter.MIN_ROW_GAP_DP
-            heroHeight = integer(json, "hero_height", heroHeight, 50, 130);  // HERO_HEIGHT_MIN, HERO_HEIGHT_MAX
+            heroHeight = heroHeightKey(integer(json, "hero_height", heroHeight, Integer.MIN_VALUE, Integer.MAX_VALUE), heroHeight);
             uniformTiles = bool(json, "uniform_tiles", uniformTiles);
             background = color(json, "background_color", background);
             skyIntensity = integer(json, "sky_intensity", skyIntensity, 0, 100);
@@ -715,7 +737,11 @@ final class Config {
         if (chosenColumns >= 4 && chosenColumns <= 7) columns = chosenColumns;
         int chosenRows = choices.getInt(ROWS_BELOW_DOCK_KEY, rowsBelow);
         if (chosenRows >= 0 && chosenRows <= 3) rowsBelow = chosenRows;
-        heroHeight = chosenHeroHeight(choices.getInt(HERO_HEIGHT_KEY, -1), heroHeight);
+        // The Trakt recommendations toggle, then the shelf height: its auto default (0) follows the feed as toggled.
+        boolean themeHeroFeed = heroFeed;
+        heroFeed = chosenHeroFeed(choices.getInt(HERO_FEED_KEY, -1), heroFeed);
+        int themeHeroHeight = heroHeight;
+        heroHeight = chosenHeroHeight(choices.getInt(HERO_HEIGHT_KEY, -1), heroHeight, heroFeed);
         animations = choices.getBoolean("animations", animations);
         advancedEffects = choices.getBoolean("advanced_effects", advancedEffects);
         File wallpaper = dir != null ? new File(dir, WALLPAPER_NAME) : null;
@@ -758,7 +784,7 @@ final class Config {
                 Math.max(0, rowsBelow), animations, advancedEffects, shamsi, greetingName, moduleCards, reducedMotion, bootToLiveTv,
                 openOnStartChoice, dockTitle, dockRow, topMenu, launcherSettingsButton, reorderButton, showNetworkPill, showInputsPill,
                 iconOnlyButtons, iconOnlyInputs, libraryButton, showLibraryPill, wifiLabelWidth, alwaysShowNames, wallpaperTrueColor, focusOvershoot,
-                vpn, homeSettings, showStats, gameDay, library, librarySelection, libraryOkOpens, libraryColumns, pillLabelsOnFocus, tvSettingsFirst, settingsPanel, shelfEveryRow, heroFeed, heroFeedInterval, rowGap, heroHeight, uniformTiles, background,
+                vpn, homeSettings, showStats, gameDay, library, librarySelection, libraryOkOpens, libraryColumns, pillLabelsOnFocus, tvSettingsFirst, settingsPanel, shelfEveryRow, heroFeed, themeHeroFeed, heroFeedInterval, rowGap, heroHeight, themeHeroHeight, uniformTiles, background,
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, restoreKeyServices, wallpaperEnabled, wallpaper,
                 wallpapers, rotationMinutes, wallpaperDim, dockOpacity, wallpaperOrder, applied, festival, inputKeycodes, appKeys, stockHomeRedirect,
                 json == null ? Collections.emptyList() : raceCalendar(json), cinematic, ambientGlow, appGlow, fadeRows,
@@ -811,12 +837,13 @@ final class Config {
             SharedPreferences.Editor editor = choices.edit();
             if (!"absent".equals(token)) editor.remove("columns").remove("animations")
                     .remove("advanced_effects").remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY)
-                    .remove(DOCK_OPACITY_KEY).remove(CLOCK_FORMAT_KEY).remove(HERO_HEIGHT_KEY);
+                    .remove(DOCK_OPACITY_KEY).remove(CLOCK_FORMAT_KEY).remove(HERO_HEIGHT_KEY).remove(HERO_FEED_KEY);
             editor.putString(THEME_SIGNATURE_KEY, signature).commit();
         } else if (!seen.equals(signature)) {
             choices.edit().remove("columns").remove("animations").remove("advanced_effects")
                     .remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY).remove(DOCK_OPACITY_KEY)
-                    .remove(CLOCK_FORMAT_KEY).remove(HERO_HEIGHT_KEY).putString(THEME_SIGNATURE_KEY, signature).commit();
+                    .remove(CLOCK_FORMAT_KEY).remove(HERO_HEIGHT_KEY).remove(HERO_FEED_KEY)
+                    .putString(THEME_SIGNATURE_KEY, signature).commit();
         }
     }
 
@@ -838,9 +865,30 @@ final class Config {
         return chosen >= 30 && chosen <= 100 ? chosen : theme;
     }
 
-    /** The shelf height chosen in Launcher settings (hero_height), or the theme's when none, or an out-of-range one, is saved. */
-    static int chosenHeroHeight(int chosen, int theme) {
-        return chosen >= HERO_HEIGHT_MIN && chosen <= HERO_HEIGHT_MAX ? chosen : theme;
+    /**
+     * The shelf height: the Launcher settings choice (hero_height) when one in range is saved, else the theme's key
+     * when it names a height, else the auto rule for the theme's 0: HERO_HEIGHT_WITH_FEED with the carousel on
+     * ({@code feed}, the effective hero_feed after the toggle), HERO_HEIGHT_WITHOUT_FEED without it.
+     */
+    static int chosenHeroHeight(int chosen, int theme, boolean feed) {
+        if (chosen >= HERO_HEIGHT_MIN && chosen <= HERO_HEIGHT_MAX) return chosen;
+        if (theme >= HERO_HEIGHT_MIN && theme <= HERO_HEIGHT_MAX) return theme;
+        return autoHeroHeight(feed);
+    }
+
+    /** hero_height 0: 100 while the carousel is on, 80 without it. */
+    static int autoHeroHeight(boolean feed) {
+        return feed ? HERO_HEIGHT_WITH_FEED : HERO_HEIGHT_WITHOUT_FEED;
+    }
+
+    /** The Trakt recommendations toggle (HERO_FEED_KEY): 1 is on, 0 off, anything else leaves the theme's hero_feed. */
+    static boolean chosenHeroFeed(int chosen, boolean theme) {
+        return chosen == 1 || (chosen != 0 && theme);
+    }
+
+    /** A theme's hero_height value: 0 (auto) or 50 to 130; anything else keeps {@code fallback}. */
+    static int heroHeightKey(int value, int fallback) {
+        return value == HERO_HEIGHT_AUTO || (value >= HERO_HEIGHT_MIN && value <= HERO_HEIGHT_MAX) ? value : fallback;
     }
 
     private static String fileStamp(File file) {

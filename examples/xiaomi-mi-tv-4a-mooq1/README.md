@@ -76,10 +76,11 @@ The theme (`config.json` here, pushed from `themes/mooq1-frosted`):
 | `wallpaper: true`, `background_color: #101828`, `cinematic_home`, `cinematic_art: 35`, `dock_glass`, `glass_style: glass`, `glow_style: horizon`, `app_glow`, `advanced_effects`, `dock_band: false`, `focus_overshoot: false` | | The frosted slate look: a pre-blurred wallpaper (the launcher never blurs at runtime), a glass dock without the band, the horizon glow in the app's colour. |
 | `icon_only_buttons`, `icon_only_inputs`, `pill_labels_on_focus`, `show_greeting: false`, `clock_format: system` | | Round icon-only pills that grow to their name while focused; no greeting. |
 | `tile_menu`, `launcher_settings_button`, `tv_settings_first`, `settings_panel` | | Hold OK on a tile for Move / Remove from Home / App info; a click on Settings opens the side panel with TV system settings first. |
-| `shelf_every_row`, `hero_feed`, `hero_feed_interval: 8`, `row_gap: 32` | | Every row scrolls up under the shelf like the dock; the shelf is the Trakt carousel, one title every 8 seconds; rows about 30% closer. |
+| `shelf_every_row`, `hero_feed`, `hero_feed_interval: 8`, `row_gap: 32` | | Every row scrolls up under the shelf like the dock; the shelf is the Trakt carousel, one title every 8 seconds; rows about 30% closer. No `hero_height`: the shelf is the layout's own 100% while the carousel is on and 80% once it is turned off in the panel. |
 
-The settings panel also carries **Hero banner height** (Compact 60, Short 80, Normal 100, Tall 120, Theme
-default) and **Backup & restore** (Back up settings, Restore from file, Import from another launcher); see the
+The settings panel also carries **Trakt recommendations** (On, Off, Theme default: the carousel over the theme's
+`hero_feed`, so this theme runs without Trakt too), **Hero banner height** (Compact 60, Short 80, Normal 100, Tall
+120, Theme default, the last naming the value it gives: 100% with the carousel, 80% without) and **Backup & restore** (Back up settings, Restore from file, Import from another launcher); see the
 fork's [README](../../README.md#backup--restore). The Wi-Fi pill says "Wi-Fi" rather than the network's name
 because Location is off on this TV: Android 10 only hands the SSID to apps while Location is on.
 

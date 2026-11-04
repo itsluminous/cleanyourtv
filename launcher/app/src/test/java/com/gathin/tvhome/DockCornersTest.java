@@ -8,8 +8,8 @@ import org.junit.Test;
 /** The dock band's corners are concentric with its tiles' corners. */
 public class DockCornersTest {
     private static final float DENSITY = 2f;   // 1080p TV, 320 dpi
-    /** activity_main.xml: 56dp root padding and 10dp grid padding on each side of a 1920 px screen. */
-    private static final int INNER = 1920 - 2 * 56 * 2 - 2 * 10 * 2;
+    /** activity_main.xml: the grid's inner width is the header's span, 56dp in from each side of a 1920 px screen. */
+    private static final int INNER = 1920 - 2 * 56 * 2;
 
     @Test public void bandRadiusIsTileRadiusPlusPadding() {
         assertEquals(77f, DockDecoration.radiusPx(25f, 52f), 0f);

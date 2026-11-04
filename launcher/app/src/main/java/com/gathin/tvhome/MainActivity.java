@@ -745,6 +745,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // uniform_rows: no band and no offsets of its own for the first row; it is a row like the others.
         if (dockRow && !uniformRows) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockGlass, cfg.dockEvenPadding, cfg.dockBand,
                 singleRow, cfg.dockBandAll).bottomDp(AppAdapter.dockBottomDp(cfg.rowGap)));
+        // The tiles share the header's edges: the first starts under the clock, the last ends under the pills.
+        if (!singleRow) grid.addItemDecoration(new EdgeAlignDecoration(rtlAppGrid));
         if (cfg.fadeRows) TopFade.attach(grid, 48 * density);
         // Reduced motion: the tiles are simply there, with no entrance (reloadApps skips it there too).
         if (animations && !reducedMotion) {
@@ -2254,7 +2256,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int pad = (int) (10 * density);
         hero.setPadding(pad, pad, pad, pad);
         ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) hero.getLayoutParams();
-        lp.setMarginStart((int) (68 * density) - pad);
+        lp.setMarginStart((int) (SHELF_START_DP * density) - pad);
         hero.setLayoutParams(lp);
         fitCarouselTitle();
         shelfMargin(heroMeta, 6);
@@ -2416,6 +2418,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** The shelf never reaches up into the header: 26dp of padding and the 52sp clock end about 90dp down. */
     private static final float SHELF_MIN_TOP_DP = 90f;
+    /** The shelf's left margin, dp: the header's own (activity_main.xml), so its texts start where the clock does. */
+    static final float SHELF_START_DP = 56f;
 
     /** The shelf's title size for this hero_height: the layout's own at 100, two thirds of it at 60 (ShelfScale). */
     private float shelfTitleSp(float base) {
@@ -2490,7 +2494,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         hero.setFocusable(false);
         hero.setPadding(0, 0, 0, 0);
         ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) hero.getLayoutParams();
-        lp.setMarginStart((int) (68 * density));
+        lp.setMarginStart((int) (SHELF_START_DP * density));
         hero.setLayoutParams(lp);
         unfitCarouselTitle(shelfTitleSp(cinematic ? 68f : 48f));
         shelfMargin(heroMeta, 12);

@@ -100,11 +100,11 @@ public class UniformRowsTest {
     @Test
     public void theTileFitReadsTheWidthAloneWithNoRowsCountedUnderTheFirst() {
         // Config resolves rows_below_dock to 0 under uniform_rows, so the height never shrinks the tiles: 6 columns
-        // on the TV's 1656px inner width (1696 less 10dp of padding a side) give the same 229px tile the dock layout
-        // gave with one row below the dock.
-        int byWidth = AppAdapter.tileWidthPx(1656, 6, D);
-        assertEquals(byWidth, AppAdapter.tileWidthPx(1656, GRID_H, 6, 0, true, true, D, 32, 100));
-        assertEquals(byWidth, AppAdapter.tileWidthPx(1656, GRID_H, 6, 1, true, true, D, 32, 100));
-        assertEquals(229, byWidth);
+        // on the TV's 1696px inner width (the header's span, EdgeAlignDecoration) give the same 234px tile the dock
+        // layout gave with one row below the dock.
+        int byWidth = AppAdapter.tileWidthPx(1696, 6, D);
+        assertEquals(byWidth, AppAdapter.tileWidthPx(1696, GRID_H, 6, 0, true, true, D, 32, 100));
+        assertEquals(byWidth, AppAdapter.tileWidthPx(1696, GRID_H, 6, 1, true, true, D, 32, 100));
+        assertEquals(234, byWidth);
     }
 }

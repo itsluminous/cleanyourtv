@@ -125,12 +125,13 @@
         android:visibility="gone"
         android:importantForAccessibility="no" />
 
-    <!-- Top shelf: the focused dock app's name, positioned above the dock in code. -->
+    <!-- Top shelf: the focused dock app's name, positioned above the dock in code. Its 56dp margin is the
+         header's: the name, the meta line, the synopsis and the dots start where the clock does. -->
     <LinearLayout
         android:id="@+id/hero"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="68dp"
+        android:layout_marginStart="56dp"
         android:orientation="vertical"
         android:alpha="0">
 
@@ -150,7 +151,6 @@
             android:id="@+id/heroMeta"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
             android:layout_marginTop="12dp"
             android:singleLine="true"
             android:textColor="#B3FFFFFF"
@@ -163,7 +163,6 @@
             android:id="@+id/heroSynopsis"
             android:layout_width="440dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
             android:layout_marginTop="8dp"
             android:maxLines="3"
             android:ellipsize="end"
@@ -177,7 +176,6 @@
             android:id="@+id/heroChips"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
             android:layout_marginTop="10dp"
             android:orientation="horizontal"
             android:visibility="gone" />
@@ -186,7 +184,6 @@
             android:id="@+id/heroDots"
             android:layout_width="wrap_content"
             android:layout_height="6dp"
-            android:layout_marginStart="4dp"
             android:layout_marginTop="16dp"
             android:orientation="horizontal"
             android:visibility="gone" />
@@ -431,11 +428,15 @@
             </LinearLayout>
         </RelativeLayout>
 
-        <!-- The wrapper clips at the grid's edge; the grid itself must not clip so scaled tiles can overflow their cells. -->
+        <!-- The wrapper clips at the grid's edge; the grid itself must not clip so scaled tiles can overflow their cells.
+             It reaches 16dp past the header on each side, and the grid pads that back, so the tiles share the header's
+             edges (EdgeAlignDecoration) while a focused first or last tile has room to grow without being cut. -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
+            android:layout_marginStart="-16dp"
+            android:layout_marginEnd="-16dp"
             android:layout_marginTop="10dp">
 
             <androidx.recyclerview.widget.RecyclerView
@@ -444,8 +445,8 @@
                 android:layout_height="match_parent"
                 android:paddingTop="10dp"
                 android:paddingBottom="40dp"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
                 android:clipToPadding="false"
                 android:clipChildren="false"
                 android:overScrollMode="never"

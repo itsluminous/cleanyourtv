@@ -88,10 +88,11 @@ The launcher's own page has these rows, top to bottom:
   while the Trakt carousel is on and Short (80%) without it. A theme height outside the four joins the picker as
   its own row ("70%"). There is no Theme default entry; **Follow theme** (the full-screen page) or a theme push
   hands the choice back to the theme.
-- **Widgets** (side panel): a tick list of **Memory**, **CPU** and **Storage**, the frosted chips beside the date
-  (`widgets` in a theme); each tick is saved as it is made, the row names the chips that are on ("Memory, CPU,
-  Storage", or None), and the page shows the set in force, the theme's until you tick one. An empty tick list is a
-  saved none, so a theme's chips can all be turned off; a theme push hands the choice back to the theme.
+- **Widgets** (side panel): a tick list of **Memory**, **CPU** and **Storage**, the ring gauges beside the date
+  (`widgets` in a theme: a percent ring, the percent inside, a caps label under it); each tick is saved as it is made,
+  the row names the gauges that are on ("Memory, CPU, Storage", or None), and the page shows the set in force, the
+  theme's until you tick one. An empty tick list is a saved none, so a theme's gauges can all be turned off; a theme
+  push hands the choice back to the theme.
 - **Trakt recommendations**: On or Off, the Trakt shelf companion's carousel on the top shelf (`hero_feed` in a
   theme); the row and its picker show the state in force, the theme's until you pick one. Off leaves the launcher exactly as with `hero_feed: false`: the shelf names the
   focused app and the companion is never read. The row is always there, and says when the Trakt shelf app is

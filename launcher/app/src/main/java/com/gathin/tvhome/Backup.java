@@ -278,6 +278,8 @@ final class Backup {
             if (!SAFE_NAME.matcher(name).matches()) continue;
             restorePrefs(ctx.getSharedPreferences(name, Context.MODE_PRIVATE), prefs.getJSONObject(name));
         }
+        // A backup from a launcher that still had an Advanced effects row carries its choice; it means nothing now.
+        Config.dropLegacyChoices(settings);
 
         File filesDir = ctx.getFilesDir();
         restoreFiles(filesDir, stateFiles(filesDir), doc.optJSONObject("files"), false);

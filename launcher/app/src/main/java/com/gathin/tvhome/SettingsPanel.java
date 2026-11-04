@@ -187,21 +187,17 @@ final class SettingsPanel {
                 choose(activity.getString(R.string.dream_name), clockLabels, clockIndex, which ->
                         save(e -> e.putString(Config.CLOCK_FORMAT_KEY, CLOCK_FORMATS[which]))));
 
+        // Animations: one switch for all the motion. Off is still, with no zoom, lift or glow; On has the theme's
+        // advanced_effects along with it (Config.advancedEffects gates on animations), so there is no Advanced
+        // effects row here and no choice saved for it (Config.ADVANCED_EFFECTS_LEGACY_KEY).
+        // A picker like the other rows (On, Off), so the row shows the new state when the pick returns; the old
+        // toggle saved its value and left the row reading the old one until the panel was reopened.
         boolean animations = choices.getBoolean("animations", config.animations);
-        boolean advanced = animations && choices.getBoolean("advanced_effects", config.advancedEffects);
-        row(R.drawable.ic_swap_vert, plainLabel(R.string.animations_state), onOff(animations), v ->
-                save(e -> e.putBoolean("animations", !animations).putBoolean("advanced_effects", !animations && advanced)));
-        View advancedRow = row(R.drawable.ic_swap_vert, activity.getString(R.string.advanced_effects), onOff(advanced), v -> {
-            if (advanced) save(e -> e.putBoolean("advanced_effects", false));
-            else new android.app.AlertDialog.Builder(activity)
-                    .setTitle(R.string.advanced_effects)
-                    .setMessage(R.string.advanced_effects_warning)
-                    .setPositiveButton(R.string.enable, (d, w) -> save(e -> e.putBoolean("advanced_effects", true)))
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .show();
+        row(R.drawable.ic_swap_vert, plainLabel(R.string.animations_state), onOff(animations), v -> {
+            String[] labels = {onOff(true), onOff(false)};
+            choose(plainLabel(R.string.animations_state), labels, animations ? 0 : 1, which ->
+                    save(e -> e.putBoolean("animations", which == 0)));
         });
-        advancedRow.setEnabled(animations);
-        advancedRow.setAlpha(animations ? 1f : 0.5f);
         if (config.openOnStartChoice) {
             row(R.drawable.ic_input, activity.getString(R.string.open_on_start_label), openOnStartLabel(), v -> showOpenOnStart());
         }

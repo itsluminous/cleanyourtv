@@ -36,7 +36,6 @@ public final class LauncherSettingsActivity extends Activity {
     private final TextView[] clockChoices = new TextView[CLOCK_FORMATS.length];
     private TextView wallpaperChoice;
     private TextView animationsChoice;
-    private TextView advancedChoice;
     private TextView followThemeChoice;
     private TextView openOnStartChoice;
     private int columns;
@@ -44,7 +43,6 @@ public final class LauncherSettingsActivity extends Activity {
     private int dockOpacity;
     private String clockFormat;
     private boolean animations;
-    private boolean advancedEffects;
 
     private SettingsPanel panel;
 
@@ -76,7 +74,6 @@ public final class LauncherSettingsActivity extends Activity {
         dockOpacity = config.dockOpacity;
         clockFormat = config.clockFormat;
         animations = config.animations;
-        advancedEffects = config.animations && config.advancedEffects;
 
         int[] ids = {R.id.columns4, R.id.columns5, R.id.columns6, R.id.columns7};
         for (int i = 0; i < ids.length; i++) {
@@ -144,26 +141,13 @@ public final class LauncherSettingsActivity extends Activity {
         wallpaperChoice = findViewById(R.id.wallpaperChoice);
         wallpaperChoice.setOnClickListener(v -> showWallpaperPicker());
         animationsChoice = findViewById(R.id.animationsChoice);
+        // Animations: one switch for all the motion; the theme's advanced_effects ride on it (Config gates them on
+        // animations), so the page has no Advanced effects row and saves no choice for it.
         animationsChoice.setOnClickListener(v -> {
             animations = !animations;
-            if (!animations) advancedEffects = false;
-            choices.edit().putBoolean("animations", animations)
-                    .putBoolean("advanced_effects", advancedEffects).apply();
+            choices.edit().putBoolean("animations", animations).apply();
             changed();
             refresh();
-        });
-        advancedChoice = findViewById(R.id.advancedChoice);
-        advancedChoice.setOnClickListener(v -> {
-            if (advancedEffects) {
-                setAdvanced(false);
-            } else {
-                new AlertDialog.Builder(this)
-                        .setTitle(R.string.advanced_effects)
-                        .setMessage(R.string.advanced_effects_warning)
-                        .setPositiveButton(R.string.enable, (dialog, which) -> setAdvanced(true))
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .show();
-            }
         });
         openOnStartChoice = findViewById(R.id.openOnStartChoice);
         if (config.openOnStartChoice) {
@@ -174,7 +158,7 @@ public final class LauncherSettingsActivity extends Activity {
         followThemeChoice.setOnClickListener(v -> {
             if (!hasOnTvChoices()) return;
             choices.edit().remove("columns").remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
-                    .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY)
+                    .remove(Config.WALLPAPER_CHOICE_KEY)
                     .remove(Config.DOCK_OPACITY_KEY).remove(Config.CLOCK_FORMAT_KEY).remove(Config.HERO_HEIGHT_KEY).remove(Config.HERO_FEED_KEY)
                     .remove(OpenOnStart.KEY).commit();
             Config current = Config.load(this);
@@ -183,7 +167,6 @@ public final class LauncherSettingsActivity extends Activity {
             dockOpacity = current.dockOpacity;
             clockFormat = current.clockFormat;
             animations = current.animations;
-            advancedEffects = current.animations && current.advancedEffects;
             changed();
             refresh();
         });
@@ -327,13 +310,6 @@ public final class LauncherSettingsActivity extends Activity {
                 choices.getLong(Config.SETTINGS_REVISION_KEY, 0) + 1).apply();
     }
 
-    private void setAdvanced(boolean enabled) {
-        advancedEffects = enabled;
-        choices.edit().putBoolean("advanced_effects", enabled).apply();
-        changed();
-        refresh();
-    }
-
     private void refresh() {
         for (int i = 0; i < columnChoices.length; i++) {
             columnChoices[i].setSelected(columns == i + 4);
@@ -349,10 +325,6 @@ public final class LauncherSettingsActivity extends Activity {
         }
         animationsChoice.setText(getString(R.string.animations_state,
                 getString(animations ? R.string.on : R.string.off)));
-        advancedChoice.setText(getString(R.string.advanced_effects_state,
-                getString(advancedEffects ? R.string.on : R.string.off)));
-        advancedChoice.setEnabled(animations);
-        advancedChoice.setAlpha(animations ? 1f : 0.5f);
         String wallpaperCurrent = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
         wallpaperChoice.setText(getString(R.string.wallpaper_state,
                 "none".equals(wallpaperCurrent) ? getString(R.string.wallpaper_none)
@@ -364,7 +336,7 @@ public final class LauncherSettingsActivity extends Activity {
 
     private boolean hasOnTvChoices() {
         return choices.contains("columns") || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
-                || choices.contains("animations") || choices.contains("advanced_effects")
+                || choices.contains("animations")
                 || choices.contains(Config.WALLPAPER_CHOICE_KEY) || choices.contains(Config.DOCK_OPACITY_KEY)
                 || choices.contains(Config.CLOCK_FORMAT_KEY) || choices.contains(Config.HERO_HEIGHT_KEY)
                 || choices.contains(Config.HERO_FEED_KEY)

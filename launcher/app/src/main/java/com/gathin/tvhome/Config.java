@@ -58,6 +58,12 @@ final class Config {
      */
     static final String HERO_FEED_KEY = "hero_feed";
     /**
+     * A choice older launchers saved from their Advanced effects row. Advanced effects now follow the Animations
+     * setting and the theme's advanced_effects key, and this key is dropped wherever it turns up (load, restore):
+     * both old Animations rows wrote it false on every toggle, which then outlived turning animations back on.
+     */
+    static final String ADVANCED_EFFECTS_LEGACY_KEY = "advanced_effects";
+    /**
      * Counts the changes made in Launcher settings. Home remembers the count it was built with and rebuilds on
      * resume when it differs, however the settings were left (see MainActivity#onResume).
      */
@@ -100,6 +106,7 @@ final class Config {
     final String inputUriScheme;
     final int columns;
     final boolean animations;
+    /** The theme's advanced_effects; only in force while animations is on (every reader checks both). */
     final boolean advancedEffects;
     final int rowsBelowDock;
     final boolean shamsiDate;
@@ -740,6 +747,7 @@ final class Config {
         // A theme push or reset invalidates choices made on the TV. On first use, remember the
         // current theme without clearing choices from an older launcher version.
         SharedPreferences choices = ctx.getSharedPreferences(SETTINGS_NAME, Context.MODE_PRIVATE);
+        dropLegacyChoices(choices);
         // Unmounted storage looks like a theme reset; compare only once the file is readable.
         if (mounted) syncThemeChoices(choices, dir, file);
         int chosenColumns = choices.getInt("columns", columns);
@@ -760,7 +768,7 @@ final class Config {
         int themeHeroHeight = heroHeight;
         heroHeight = chosenHeroHeight(choices.getInt(HERO_HEIGHT_KEY, -1), heroHeight, heroFeed);
         animations = choices.getBoolean("animations", animations);
-        advancedEffects = choices.getBoolean("advanced_effects", advancedEffects);
+        // advanced_effects is the theme's alone: the Animations setting gates it (readers test animations && advancedEffects).
         File wallpaper = dir != null ? new File(dir, WALLPAPER_NAME) : null;
         if (wallpaper != null && !(wallpaper.isFile() && wallpaper.length() > 0)) wallpaper = null;
         // A theme can also switch the wallpaper off while the file is still there.
@@ -843,6 +851,15 @@ final class Config {
         return races;
     }
 
+    /**
+     * Drops the choices no setting writes any more (ADVANCED_EFFECTS_LEGACY_KEY), so a value an older launcher
+     * saved cannot turn the theme's effects off behind the Animations row. Backup.restore calls it too, so a
+     * backup taken by that launcher restores clean.
+     */
+    static void dropLegacyChoices(SharedPreferences choices) {
+        if (choices.contains(ADVANCED_EFFECTS_LEGACY_KEY)) choices.edit().remove(ADVANCED_EFFECTS_LEGACY_KEY).apply();
+    }
+
     private static void syncThemeChoices(SharedPreferences choices, File dir, File config) {
         File revision = dir == null ? null : new File(dir, THEME_REVISION_NAME);
         String token = revisionToken(revision);
@@ -853,11 +870,11 @@ final class Config {
             // explicit theme push or reset by the updated tools.
             SharedPreferences.Editor editor = choices.edit();
             if (!"absent".equals(token)) editor.remove("columns").remove("animations")
-                    .remove("advanced_effects").remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY)
+                    .remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY)
                     .remove(DOCK_OPACITY_KEY).remove(CLOCK_FORMAT_KEY).remove(HERO_HEIGHT_KEY).remove(HERO_FEED_KEY);
             editor.putString(THEME_SIGNATURE_KEY, signature).commit();
         } else if (!seen.equals(signature)) {
-            choices.edit().remove("columns").remove("animations").remove("advanced_effects")
+            choices.edit().remove("columns").remove("animations")
                     .remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY).remove(DOCK_OPACITY_KEY)
                     .remove(CLOCK_FORMAT_KEY).remove(HERO_HEIGHT_KEY).remove(HERO_FEED_KEY)
                     .putString(THEME_SIGNATURE_KEY, signature).commit();

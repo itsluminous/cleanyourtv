@@ -134,16 +134,58 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         return tileHeightPx + Math.round((dockRow ? rowGapDp : COMPACT_ITEM_EXTRA_DP) * density);
     }
 
-    /** The 7dp gap and the 22dp name label under a tile: the part of row_gap the item's padding cannot give up. */
-    static final int MIN_ROW_GAP_DP = 7 + 22;
+    /** item_app.xml's name label: 22dp tall, its text centred in it. */
+    static final int NAME_HEIGHT_DP = 22;
+    /**
+     * The focused name slides down to this offset from its laid-out spot (the layout's -6dp is where it starts and
+     * where an unfocused name rests): 4dp, the same for every row_gap, so the slide stays the 10dp it always was.
+     */
+    static final float NAME_SLIDE_DP = 4f;
+    /** The least row_gap: the label centred in it still clears the tile (Config clamps row_gap to this). */
+    static final int MIN_ROW_GAP_DP = 29;
 
-    /** row_gap: the item's padding above its tile; the rest of the gap less the name goes below (itemPadBottomDp). */
+    /**
+     * row_gap: the name label's laid-out top below the tile's bottom, in dp, chosen so that once slid down by
+     * NAME_SLIDE_DP its 22dp box is centred in the gap between this tile's bottom and the next row's tile top (the
+     * unscaled bottom: the focus zoom's growth downward and advanced_effects' 4dp lift cancel out near enough on a
+     * 6-column tile, and without the lift the zoom adds 4dp, which the eye reads as the tile's own motion). At the
+     * layout's own 45dp this is item_app.xml's 7dp, half a dp aside; at 32 it is 1dp, where the fixed 7dp left the
+     * label 5dp low. Negative below 30 (the box overlaps the tile by a hair; its text, 17dp tall, does not).
+     */
+    static float nameTopDp(int rowGapDp) {
+        return rowGapDp / 2f - NAME_HEIGHT_DP / 2f - NAME_SLIDE_DP;
+    }
+
+    /**
+     * row_gap: the item's padding above its tile, half of what the gap has over the label's 29dp (7 + 22) as it always
+     * was, so the tiles stay exactly where this row_gap put them; the padding below the label takes the rest
+     * (itemPaddingPx). 8dp at the layout's own 45, item_app.xml's; 1dp at 32.
+     */
     static int itemPadTopDp(int rowGapDp) {
         return Math.max(0, rowGapDp - MIN_ROW_GAP_DP) / 2;
     }
 
-    static int itemPadBottomDp(int rowGapDp) {
-        return Math.max(0, rowGapDp - MIN_ROW_GAP_DP) - itemPadTopDp(rowGapDp);
+    /** nameTopDp in px: the name label's topMargin for a tile this tall, with this row_gap. */
+    static int nameTopMarginPx(int tileHeightPx, float density, int rowGapDp) {
+        return tileHeightPx + Math.round(nameTopDp(rowGapDp) * density);
+    }
+
+    /**
+     * The item's paddings {top, bottom} in px for this row_gap: the top from itemPadTopDp, the bottom whatever keeps
+     * the item exactly itemHeightPx tall once the rounded label and margin are in, so the row pitch never drifts by
+     * a pixel per row and the label, slid down on focus, still ends inside the item.
+     */
+    static int[] itemPaddingPx(int tileHeightPx, float density, int rowGapDp) {
+        int top = Math.round(itemPadTopDp(rowGapDp) * density);
+        int bottom = itemHeightPx(tileHeightPx, true, density, rowGapDp) - top
+                - nameTopMarginPx(tileHeightPx, density, rowGapDp) - Math.round(NAME_HEIGHT_DP * density);
+        return new int[]{top, Math.max(0, bottom)};
+    }
+
+    /** Where the focused name's centre lands, in px below the tile's bottom: half the gap, give or take rounding. */
+    static float focusedNameCentrePx(int tileHeightPx, float density, int rowGapDp) {
+        return nameTopMarginPx(tileHeightPx, density, rowGapDp) - tileHeightPx + NAME_SLIDE_DP * density
+                + Math.round(NAME_HEIGHT_DP * density) / 2f;
     }
 
     /** DockDecoration's offset below the dock row: 12dp at the layout's own row_gap, in proportion otherwise. */
@@ -488,9 +530,11 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             int pad = Math.round(4 * density);
             v.setPadding(v.getPaddingLeft(), pad, v.getPaddingRight(), pad);
         } else if (rowGapDp != (int) ITEM_EXTRA_DP) {
-            // row_gap: the name keeps its 7dp gap and 22dp label; the item's 8dp paddings take up the difference.
-            v.setPadding(v.getPaddingLeft(), Math.round(itemPadTopDp(rowGapDp) * density), v.getPaddingRight(),
-                    Math.round(itemPadBottomDp(rowGapDp) * density));
+            // row_gap: the name label is centred in the gap once it has slid down on focus (nameTopDp), and the item's
+            // paddings take up the rest so the item stays tile + row_gap tall (itemPaddingPx).
+            nameLp.topMargin = nameTopMarginPx(h, density, rowGapDp);
+            int[] pad = itemPaddingPx(h, density, rowGapDp);
+            v.setPadding(v.getPaddingLeft(), pad[0], v.getPaddingRight(), pad[1]);
         }
         name.setLayoutParams(nameLp);
         // A sideways row would stretch a match_parent item across the whole screen: give it a grid column's width.
@@ -543,6 +587,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         h.inDock = dockKind;
         boolean focused = h.card.isFocused();   // a rebind after reload() can hit the focused tile
         h.name.setAlpha(focused ? 1f : restNameAlpha);
+        // With no focus motion the name never slides: park it where the slide ends, centred in the row gap.
+        if (!animations) h.name.setTranslationY(NAME_SLIDE_DP * ctx.getResources().getDisplayMetrics().density);
         h.card.setScaleX(focused && animations ? focusScale() : 1f);
         h.card.setScaleY(focused && animations ? focusScale() : 1f);
         h.card.setTranslationY(focused && advancedEffects && !dockKind ? -4f * ctx.getResources().getDisplayMetrics().density : 0f);
@@ -1047,7 +1093,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     banner.setScaleX(1f);
                     banner.setScaleY(1f);
                     name.setAlpha(focused ? 1f : restNameAlpha);
-                    name.setTranslationY(0f);
+                    // No slide, so the name sits where the slide would end: centred in the row gap (nameTopDp).
+                    name.setTranslationY(NAME_SLIDE_DP * density);
                 } else if (reducedMotion) {
                     // A short zoom with no hardware layer: building a layer for so short an animation costs more
                     // frames than it saves. The name just appears instead of fading.
@@ -1061,7 +1108,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     // Same place as the full motion's slide ends: the layout's -6dp is only its starting point, and
                     // left there the name overlaps the zoomed tile.
                     // Only on focus: snapping it back to -6dp while it fades out would jump it up over the tile.
-                    if (focused) name.setTranslationY(density * 4f);
+                    if (focused) name.setTranslationY(NAME_SLIDE_DP * density);
                 } else {
                     view.animate().scaleX(s).scaleY(s)
                             .translationY(focused && advancedEffects && !inDock ? -4f * density : 0f)
@@ -1075,7 +1122,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                                 .setDuration(280).start();
                     }
                     name.animate().alpha(focused ? 1f : restNameAlpha)
-                            .translationY(focused ? density * 4f : -density * 6f)
+                            .translationY(focused ? NAME_SLIDE_DP * density : -density * 6f)
                             .setDuration(220).start();
                 }
                 int pos = getBindingAdapterPosition();

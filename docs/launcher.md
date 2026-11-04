@@ -75,8 +75,10 @@ The launcher's own page has these rows, top to bottom:
   default**. A pick holds that picture and stops the rotation until you choose Theme default, press
   Follow theme, or push the theme again. The side panel has no Wallpaper row (a TV has no file picker; a
   theme push or a restore sets the wallpaper).
-- **Animations** on or off, and **Advanced effects** (tile lift, icon zoom and smooth ambient-colour
-  transitions; they may use more memory) once animations are on.
+- **Animations** on or off: the one switch for the motion. Off is still, with no tile zoom, lift or glow; On runs
+  the basic motion and, when the theme sets `advanced_effects` (tile lift, icon zoom and smooth ambient-colour
+  transitions; they may use more memory), those too. There is no Advanced effects row: the effects follow the theme
+  key under this switch, and an `advanced_effects` choice an older launcher saved is dropped on load and on restore.
 - **Open on start**, only with `open_on_start_choice`: Off, or an app that opens instead of Home the first
   time Home comes up after the TV starts. Once per boot, so Home and Back still reach the launcher.
 - **Hero banner height**: Compact (60%), Short (80%), Normal (100%) or Tall (120%), the top shelf's height;

@@ -245,6 +245,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private final Runnable turnTick = this::updatePanel;
     /** config.xml show_stats, overridable by a theme. Off: the line is gone and nothing is read. */
     private boolean showStats;
+    /** widgets (Config.widgets, after the Widgets tick list): the chips beside the date, in bar order; empty: none, nothing read. */
+    private List<String> widgets = Collections.emptyList();
+    private LinearLayout widgetsBar;
+    /** One chip per name in {@link #widgets}, same order. */
+    private final List<TextView> widgetChips = new ArrayList<>(3);
+    /** How often the chips are read while Home is on screen; show_stats alone keeps its STATS_MS. */
+    private static final long WIDGETS_MS = 5_000L;
     /** config.xml inputs_connected_only: the Inputs menu lists only connected inputs, the rest behind "More inputs". */
     private boolean inputsConnectedOnly;
     /** config.xml inputs_cec_state_only: only CEC device rows show a connection state, bare HDMI ports none. */
@@ -654,6 +661,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         // date_two_lines: not with the extra date lines or the date under the clock, which would push the header down.
         if (cfg.dateTwoLines && !shamsi && !lunar && !cfg.dateBelowClock) dateOnTwoLines();
+        setUpWidgets(cfg.widgets);
         vpnApp = cfg.vpnApp;
         vpnPill = cfg.vpnPill && !cfg.topMenu;
         btnVpn = findViewById(R.id.btnVpn);
@@ -796,9 +804,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             int wantBottom = shelfEveryRow ? Math.max(grid.getPaddingBottom(), h - want - dockRow) : grid.getPaddingBottom();
             if (shelfEveryRow) {
                 // The rows that scroll up past the padding line would run on under the shelf's name (clipToPadding is
-                // off so a focused tile can grow past its row): cut them 16dp above the line, which keeps the focused
-                // row's own growth and loses the row above.
-                int clipTop = Math.max(0, want - (int) (16 * density));
+                // off so a focused tile can grow past its row): cut them 16dp above the line, or at the shelf's gap
+                // when that is less (a short shelf), which keeps the focused row's own growth and loses the row above.
+                int clipTop = Math.max(0, want - Math.min((int) (16 * density), shelfGap));
                 Rect clip = grid.getClipBounds();
                 if (clip == null || clip.top != clipTop || clip.right != r - l || clip.bottom != h) {
                     grid.setClipBounds(new Rect(0, clipTop, r - l, h));
@@ -1236,7 +1244,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             updateInputsButton();
             pillsShown = true;
         }
-        if (showStats) startStats();
+        if (showStats || !widgets.isEmpty()) startStats();
         if (gameDay != null) gameDay.start();
         sky.update();
         wallpaperPlayer.start();
@@ -2862,7 +2870,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void startStats() {
         if (statsThread != null) return;
-        stats.setVisibility(View.VISIBLE);
+        if (showStats) stats.setVisibility(View.VISIBLE);
         cpuTotalPrev = -1;
         idlePrev = -1;
         procStatDead = false;
@@ -2872,15 +2880,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // at any moment without the reader tripping over it.
         Handler bg = new Handler(statsThread.getLooper());
         statsBg = bg;
+        // The chips refresh every 5 seconds; the line alone keeps its 10. One reading serves both.
+        final long period = widgets.isEmpty() ? STATS_MS : WIDGETS_MS;
         bg.post(new Runnable() {
             @Override
             public void run() {
                 if (statsBg != bg) return;
-                String line = readStatsLine();
+                Readings r = readStats();
+                String line = showStats ? statsLine(r) : null;
+                String[] chips = widgets.isEmpty() ? null : widgetTexts(r);
                 handler.post(() -> {
-                    if (showStats && stats != null && statsBg == bg) stats.setText(line);
+                    if (statsBg != bg) return;
+                    if (line != null && showStats && stats != null) stats.setText(line);
+                    if (chips != null) showWidgetValues(chips);
                 });
-                if (statsBg == bg) bg.postDelayed(this, STATS_MS);
+                if (statsBg == bg) bg.postDelayed(this, period);
             }
         });
     }
@@ -2902,26 +2916,177 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         line.append(part);
     }
 
-    private String readStatsLine() {
+    /** One reading of the three figures: CPU busy percent (-1 when it cannot be read), RAM {used, total} MB or null, free bytes on /data. */
+    private static final class Readings {
+        int cpu = -1;
+        /** The cores' mean clock, kHz, read when the busy percent cannot be (the CPU chip shows it as GHz); 0 if neither. */
+        long cpuKhz;
+        long[] mem;
+        long freeBytes;
+    }
+
+    /** Runs off the main thread: the CPU figure needs two samples 200 ms apart on the first pass. */
+    private Readings readStats() {
+        Readings r = new Readings();
         int cpu = cpuPercent();
         if (cpu < 0) {
             try {
                 Thread.sleep(200);             // second sample, so the first line already has a CPU figure
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                return "";
+                return r;
             }
             cpu = cpuPercent();
         }
+        r.cpu = cpu;
+        if (cpu < 0 && !widgets.isEmpty()) r.cpuKhz = cpuKhz();
+        r.mem = memUsedOfTotalMb();
+        r.freeBytes = Environment.getDataDirectory().getFreeSpace();
+        return r;
+    }
+
+    private String statsLine(Readings r) {
         // Android 8 and later hide /proc/stat from apps on many TVs: then the line leaves CPU out rather than
         // showing a dash that never fills in.
         StringBuilder line = new StringBuilder();
-        if (cpu >= 0) line.append(getString(R.string.stats_cpu, cpu));
-        long[] mem = memUsedOfTotalMb();
-        if (mem != null) appendStat(line, getString(R.string.stats_memory, mem[0], mem[1]));
-        String free = formatGb(getResources(), Environment.getDataDirectory().getFreeSpace());
+        if (r.cpu >= 0) line.append(getString(R.string.stats_cpu, r.cpu));
+        if (r.mem != null) appendStat(line, getString(R.string.stats_memory, r.mem[0], r.mem[1]));
+        String free = formatGb(getResources(), r.freeBytes);
         if (!free.isEmpty()) appendStat(line, getString(R.string.stats_storage, free));
         return StatsText.forLocale(line.toString(), getResources().getConfiguration().getLocales().get(0));
+    }
+
+    // ---- widgets: the chips beside the date (config.xml widgets, the Widgets tick list) -----------
+
+    /**
+     * widgets: one frosted chip per name, an icon and a figure, in the row that holds the clock and the date, right
+     * of the date. The date's column gives up its stretch so the chips follow the date rather than the pills; the
+     * chips' own box takes the rest of the row and stops at the pills, and fitWidgets caps and ellipsises them when
+     * they would not fit it. Each chip shows once its first reading is in (startStats).
+     */
+    private void setUpWidgets(List<String> names) {
+        widgets = names;
+        if (names.isEmpty()) return;
+        widgetsBar = findViewById(R.id.widgets);
+        widgetsBar.setVisibility(View.VISIBLE);
+        View column = (View) findViewById(R.id.date).getParent();
+        LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) column.getLayoutParams();
+        if (lp.weight > 0) {
+            lp.weight = 0;
+            lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            column.setLayoutParams(lp);
+            // The column now wraps its texts, so they must wrap too (as moveDateBelowClock has it).
+            ViewGroup texts = (ViewGroup) column;
+            for (int i = 0; i < texts.getChildCount(); i++) {
+                View text = texts.getChildAt(i);
+                LinearLayout.LayoutParams textLp = (LinearLayout.LayoutParams) text.getLayoutParams();
+                textLp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+                textLp.gravity = ((TextView) text).getGravity() & Gravity.HORIZONTAL_GRAVITY_MASK;
+                text.setLayoutParams(textLp);
+            }
+        }
+        for (int i = 0; i < names.size(); i++) {
+            String name = names.get(i);
+            TextView chip = new TextView(this, null, 0, R.style.WidgetChip);
+            int icon = Config.WIDGET_CPU.equals(name) ? R.drawable.ic_cpu
+                    : Config.WIDGET_MEMORY.equals(name) ? R.drawable.ic_memory : R.drawable.ic_storage;
+            chip.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0);
+            chip.setVisibility(View.INVISIBLE);   // until the first reading
+            LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Math.round(30 * density));
+            if (i > 0) clp.setMarginStart(Math.round(8 * density));
+            widgetsBar.addView(chip, clp);
+            widgetChips.add(chip);
+        }
+        widgetsBar.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> fitWidgets());
+    }
+
+    /** The chips' texts for one reading, in {@link #widgets} order; null where that figure cannot be read (the chip hides). */
+    private String[] widgetTexts(Readings r) {
+        String[] out = new String[widgets.size()];
+        Locale locale = getResources().getConfiguration().getLocales().get(0);
+        for (int i = 0; i < out.length; i++) {
+            String name = widgets.get(i), text = null;
+            if (Config.WIDGET_CPU.equals(name)) {
+                // Busy percent where the TV lets an app read it; the cores' clock where it does not (Android 10 hides
+                // /proc/stat from apps and this kernel has no cpuidle, but sysfs cpufreq is open to them).
+                if (r.cpu >= 0) text = getString(R.string.widget_cpu, r.cpu);
+                else if (r.cpuKhz > 0) text = getString(R.string.widget_cpu_freq, r.cpuKhz / 1_000_000f);
+            } else if (Config.WIDGET_MEMORY.equals(name)) {
+                if (r.mem != null) text = getString(R.string.widget_memory, Math.max(0, r.mem[1] - r.mem[0]));
+            } else {
+                String free = formatGb(getResources(), r.freeBytes);
+                if (!free.isEmpty()) text = getString(R.string.widget_storage, free);
+            }
+            out[i] = text == null ? null : StatsText.forLocale(text, locale);
+        }
+        return out;
+    }
+
+    private void showWidgetValues(String[] texts) {
+        for (int i = 0; i < widgetChips.size() && i < texts.length; i++) {
+            TextView chip = widgetChips.get(i);
+            if (texts[i] == null) {
+                chip.setVisibility(View.GONE);
+                continue;
+            }
+            if (!texts[i].contentEquals(chip.getText())) chip.setText(texts[i]);
+            chip.setVisibility(View.VISIBLE);
+        }
+        fitWidgets();
+    }
+
+    /**
+     * The chips never reach the pills: their box ends where the pills start, and when the chips as they would like to
+     * be (icon, gap, text, padding) are wider than it, each gets an equal share and ends in an ellipsis. Back to their
+     * own width once they fit again. Set only on a change, so the layout it asks for does not run in a loop.
+     */
+    private void fitWidgets() {
+        if (widgetsBar == null || widgetsBar.getWidth() <= 0) return;
+        int shown = 0, want = 0, margins = 0;
+        for (TextView chip : widgetChips) {
+            if (chip.getVisibility() != View.VISIBLE) continue;
+            ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) chip.getLayoutParams();
+            if (shown > 0) margins += lp.getMarginStart();
+            shown++;
+            Drawable[] d = chip.getCompoundDrawablesRelative();
+            int icon = d[0] == null ? 0 : d[0].getIntrinsicWidth() + chip.getCompoundDrawablePadding();
+            want += chip.getPaddingStart() + chip.getPaddingEnd() + icon + Math.round(chip.getPaint().measureText(chip.getText().toString()));
+        }
+        if (shown == 0) return;
+        int available = widgetsBar.getWidth() - margins;
+        int max = want + margins > widgetsBar.getWidth() ? Math.max(Math.round(40 * density), available / shown) : Integer.MAX_VALUE;
+        for (TextView chip : widgetChips) if (chip.getMaxWidth() != max) chip.setMaxWidth(max);
+    }
+
+    // ---- date_two_lines --------------------------------------------------------------------------
+
+    /**
+     * date_two_lines: the day of the week over the day and month, each in the TV's language's own pattern
+     * (DateFormat.getBestDateTimePattern, so "4 NOVEMBER" here and "NOVEMBER 4" in the US), in the date's caps and
+     * tracking. The block is centred on the clock by translation, whatever the header's own alignment (the Hebrew
+     * header keeps its bottom line), so the header's height does not move: two 14sp lines are shorter than the clock.
+     */
+    private void dateOnTwoLines() {
+        TextClock date = findViewById(R.id.date);
+        Locale locale = getResources().getConfiguration().getLocales().get(0);
+        String format = android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEE") + "\n"
+                + android.text.format.DateFormat.getBestDateTimePattern(locale, "d MMMM");
+        date.setSingleLine(false);
+        date.setMaxLines(2);
+        date.setLineSpacing(6 * density, 1f);
+        date.setFormat12Hour(format);
+        date.setFormat24Hour(format);
+        View column = (View) date.getParent();
+        View clock = findViewById(R.id.clock);
+        ViewGroup row = (ViewGroup) column.getParent();
+        View.OnLayoutChangeListener centre = (v, l, t, r, b, ol, ot, or, ob) -> {
+            Rect c = tileRect;
+            c.set(0, 0, clock.getWidth(), clock.getHeight());
+            row.offsetDescendantRectToMyCoords(clock, c);
+            column.setTranslationY(c.exactCenterY() - (column.getTop() + column.getHeight() / 2f));
+        };
+        column.addOnLayoutChangeListener(centre);
+        clock.addOnLayoutChangeListener(centre);
     }
 
     // -1: need another sample. -2: this source cannot be read (Android 9 hides /proc/stat from apps).
@@ -3003,6 +3168,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (dw <= 0) return -1;
         int busy = (int) Math.round((dw - di) * 100.0 / dw);
         return Math.max(0, Math.min(100, busy));
+    }
+
+    /** The cores' mean scaling_cur_freq in kHz (sysfs, which Android lets an app read), or 0 when no core answers. */
+    private static long cpuKhz() {
+        long sum = 0;
+        int cores = 0;
+        for (int i = 0; i < 8; i++) {
+            String t = readFirstLine("/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_cur_freq");
+            if (t == null) break;
+            try {
+                sum += Long.parseLong(t.trim());
+                cores++;
+            } catch (NumberFormatException e) {
+                break;
+            }
+        }
+        return cores == 0 ? 0 : sum / cores;
     }
 
     /** RAM usage as {used, total} in MB (MemInfo.usedOfTotalMb); null when /proc/meminfo cannot be read. */
@@ -3156,37 +3338,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 + (clock.getHeight() - buttons.getHeight()) / 2f);
         clockRow.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> align.run());
         buttons.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> align.run());
-    }
-
-    // ---- date_two_lines --------------------------------------------------------------------------
-
-    /**
-     * date_two_lines: the day of the week over the day and month, each in the TV's language's own pattern
-     * (DateFormat.getBestDateTimePattern, so "4 NOVEMBER" here and "NOVEMBER 4" in the US), in the date's caps and
-     * tracking. The block is centred on the clock by translation, whatever the header's own alignment (the Hebrew
-     * header keeps its bottom line), so the header's height does not move: two 14sp lines are shorter than the clock.
-     */
-    private void dateOnTwoLines() {
-        TextClock date = findViewById(R.id.date);
-        Locale locale = getResources().getConfiguration().getLocales().get(0);
-        String format = android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEE") + "\n"
-                + android.text.format.DateFormat.getBestDateTimePattern(locale, "d MMMM");
-        date.setSingleLine(false);
-        date.setMaxLines(2);
-        date.setLineSpacing(6 * density, 1f);
-        date.setFormat12Hour(format);
-        date.setFormat24Hour(format);
-        View column = (View) date.getParent();
-        View clock = findViewById(R.id.clock);
-        ViewGroup row = (ViewGroup) column.getParent();
-        View.OnLayoutChangeListener centre = (v, l, t, r, b, ol, ot, or, ob) -> {
-            Rect c = tileRect;
-            c.set(0, 0, clock.getWidth(), clock.getHeight());
-            row.offsetDescendantRectToMyCoords(clock, c);
-            column.setTranslationY(c.exactCenterY() - (column.getTop() + column.getHeight() / 2f));
-        };
-        column.addOnLayoutChangeListener(centre);
-        clock.addOnLayoutChangeListener(centre);
     }
 
     /** The first top-bar button after Inputs that is shown, in bar order (top_bar_apps, the network pill, ...); Settings is always there. */

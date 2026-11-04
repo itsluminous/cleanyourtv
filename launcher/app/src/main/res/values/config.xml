@@ -483,6 +483,11 @@
          alongside shamsi_date, lunar_date or date_below_clock, whose extra lines would push the header down. A
          theme can set "date_two_lines": true. -->
     <bool name="date_two_lines">false</bool>
+    <!-- widgets: small frosted chips right of the date, each an icon and a figure, in this order: "memory" (RAM free,
+         MB), "cpu" (busy percent) and "storage" (free space on /data). Read every 5 seconds while Home is on screen,
+         like show_stats, and nothing is read while the list is empty. The Widgets tick list in Launcher settings
+         overrides this list on the TV. Empty by default; a theme can set "widgets": ["memory", "cpu", "storage"]. -->
+    <string-array name="widgets" />
 
     <!-- Apps pre-seeded into the App library's "added" set at startup (config.xml library_apps, or a theme's
          config.json). They show on Home as if the owner had added them in the App library UI, and stay

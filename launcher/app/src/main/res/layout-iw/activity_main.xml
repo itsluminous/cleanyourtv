@@ -228,6 +228,20 @@
                 android:orientation="horizontal"
                 android:gravity="right|bottom">
 
+                <!-- widgets: the Memory, CPU and Storage chips beside the date (on its left here), filled in code
+                     (MainActivity setUpWidgets); gone, and nothing is read, while the list is empty. -->
+                <LinearLayout
+                    android:id="@+id/widgets"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginEnd="20dp"
+                    android:gravity="right|center_vertical"
+                    android:orientation="horizontal"
+                    android:baselineAligned="false"
+                    android:visibility="gone" />
+
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

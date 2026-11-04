@@ -25,6 +25,11 @@ public class StatsTextTest {
         assertTrue(text.contains("\u200E\u202A850/2850 MB\u202C\u200E"));
         assertTrue(text.contains("\u200E\u202A0.8/4.4 GB\u202C\u200E"));
     }
+    @Test public void isolatesTheCpuChipsClockToo() {
+        // widgets: the CPU chip shows the clock where the busy percent cannot be read (widget_cpu_freq).
+        String text = StatsText.forLocale("מעבד 1.2 GHz", new Locale("he"));
+        assertTrue(text.contains("\u200E\u202A1.2 GHz\u202C\u200E"));
+    }
     @Test public void preservesUpstreamSpacedUsedTotalAsOneRun() {
         String text = StatsText.forLocale("זיכרון 1853 / 2915 MB", new Locale("he"));
         assertTrue(text.contains("\u200E\u202A1853 / 2915 MB\u202C\u200E"));

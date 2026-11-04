@@ -58,6 +58,14 @@ final class Config {
      */
     static final String HERO_FEED_KEY = "hero_feed";
     /**
+     * The Widgets tick list in Launcher settings: the string set of chips shown next to the date (WIDGET_* values).
+     * Unset means the theme's widgets key decides; an empty set is a saved "none".
+     */
+    static final String WIDGETS_KEY = "widgets";
+    /** The three chips widgets can name, in the order the top bar shows them: memory, cpu, storage. */
+    static final String WIDGET_MEMORY = "memory", WIDGET_CPU = "cpu", WIDGET_STORAGE = "storage";
+    static final List<String> WIDGET_NAMES = Collections.unmodifiableList(Arrays.asList(WIDGET_MEMORY, WIDGET_CPU, WIDGET_STORAGE));
+    /**
      * A choice older launchers saved from their Advanced effects row. Advanced effects now follow the Animations
      * setting and the theme's advanced_effects key, and this key is dropped wherever it turns up (load, restore):
      * both old Animations rows wrote it false on every toggle, which then outlived turning animations back on.
@@ -223,6 +231,13 @@ final class Config {
      * extra lines would then push the header down; the key reads false alongside them.
      */
     final boolean dateTwoLines;
+    /**
+     * The chips next to the date (widgets): WIDGET_MEMORY, WIDGET_CPU, WIDGET_STORAGE in that order, after the Widgets
+     * tick list in Launcher settings (WIDGETS_KEY) over the theme's key. Empty: no chips, and nothing is read.
+     */
+    final List<String> widgets;
+    /** The theme's widgets before the Launcher settings choice, what its row shows while no choice is saved. */
+    final List<String> themeWidgets;
     /** Icon on a card tinted from that icon, instead of the app's banner (config.xml uniform_tiles). */
     final boolean uniformTiles;
     /** Background colour behind everything, #RRGGBB; black unless a theme says otherwise. */
@@ -347,7 +362,7 @@ final class Config {
                    String sourcePanelExtra, boolean coocaaSources, String inputAction, List<String> inputSources,
                    String inputUriScheme, int columns, int rowsBelowDock, boolean animations, boolean advancedEffects,
                    boolean shamsiDate, String greetingName, boolean moduleCards, boolean reducedMotion, boolean bootToLiveTv, boolean openOnStartChoice, boolean dockTitle, boolean dockRow, boolean topMenu, boolean launcherSettingsButton, boolean reorderButton, boolean showNetworkPill, boolean showInputsPill, boolean iconOnlyButtons, boolean iconOnlyInputs, boolean libraryButton, boolean showLibraryPill, int wifiLabelWidth, boolean alwaysShowNames, boolean wallpaperTrueColor, boolean focusOvershoot, String vpnApp,
-                   boolean showHomeSettingsShortcut, boolean showStats, String gameDay, boolean appLibrary, boolean appLibrarySelection, boolean libraryOkOpens, int libraryColumns, boolean pillLabelsOnFocus, boolean tvSettingsFirst, boolean settingsPanel, boolean shelfEveryRow, boolean uniformRows, boolean heroFeed, boolean themeHeroFeed, int heroFeedInterval, int rowGap, int heroHeight, int themeHeroHeight, boolean dateTwoLines, boolean uniformTiles, int backgroundColor, int skyIntensity,
+                   boolean showHomeSettingsShortcut, boolean showStats, String gameDay, boolean appLibrary, boolean appLibrarySelection, boolean libraryOkOpens, int libraryColumns, boolean pillLabelsOnFocus, boolean tvSettingsFirst, boolean settingsPanel, boolean shelfEveryRow, boolean uniformRows, boolean heroFeed, boolean themeHeroFeed, int heroFeedInterval, int rowGap, int heroHeight, int themeHeroHeight, boolean dateTwoLines, List<String> widgets, List<String> themeWidgets, boolean uniformTiles, int backgroundColor, int skyIntensity,
                    int[] settingsKeycodes, boolean settingsKeyPanel, boolean restoreKeyServices, boolean wallpaperEnabled, File wallpaper, List<File> wallpapers,
                    int wallpaperRotationMinutes, int wallpaperDim, int dockOpacity, String wallpaperOrder, boolean overlayApplied,
                    Festival festival, int[] inputKeycodes, List<String> appKeys, String stockHomeRedirect,
@@ -433,6 +448,8 @@ final class Config {
         this.heroHeight = heroHeight;
         this.themeHeroHeight = themeHeroHeight;
         this.dateTwoLines = dateTwoLines;
+        this.widgets = Collections.unmodifiableList(widgets);
+        this.themeWidgets = Collections.unmodifiableList(themeWidgets);
         this.uniformTiles = uniformTiles;
         this.backgroundColor = backgroundColor;
         this.skyIntensity = skyIntensity;
@@ -577,6 +594,7 @@ final class Config {
         int rowGap = res.getInteger(R.integer.row_gap);
         int heroHeight = res.getInteger(R.integer.hero_height);
         boolean dateTwoLines = res.getBoolean(R.bool.date_two_lines);
+        List<String> widgets = new ArrayList<>(Arrays.asList(res.getStringArray(R.array.widgets)));
         boolean uniformTiles = res.getBoolean(R.bool.uniform_tiles);
         int background = 0xFF000000;
         int skyIntensity = res.getInteger(R.integer.sky_intensity);
@@ -702,6 +720,7 @@ final class Config {
             rowGap = integer(json, "row_gap", rowGap, 29, 90);  // 29 is AppAdapter.MIN_ROW_GAP_DP
             heroHeight = heroHeightKey(integer(json, "hero_height", heroHeight, Integer.MIN_VALUE, Integer.MAX_VALUE), heroHeight);
             dateTwoLines = bool(json, "date_two_lines", dateTwoLines);
+            widgets = stringList(json, "widgets", widgets);
             uniformTiles = bool(json, "uniform_tiles", uniformTiles);
             background = color(json, "background_color", background);
             skyIntensity = integer(json, "sky_intensity", skyIntensity, 0, 100);
@@ -776,6 +795,9 @@ final class Config {
         heroFeed = chosenHeroFeed(choices.getInt(HERO_FEED_KEY, -1), heroFeed);
         int themeHeroHeight = heroHeight;
         heroHeight = chosenHeroHeight(choices.getInt(HERO_HEIGHT_KEY, -1), heroHeight, heroFeed);
+        // The Widgets tick list over the theme's key; both are kept to the three chips, in the bar's order.
+        List<String> themeWidgets = widgetList(widgets);
+        widgets = chosenWidgets(choices.getStringSet(WIDGETS_KEY, null), themeWidgets);
         animations = choices.getBoolean("animations", animations);
         // advanced_effects is the theme's alone: the Animations setting gates it (readers test animations && advancedEffects).
         File wallpaper = dir != null ? new File(dir, WALLPAPER_NAME) : null;
@@ -818,7 +840,7 @@ final class Config {
                 Math.max(0, rowsBelow), animations, advancedEffects, shamsi, greetingName, moduleCards, reducedMotion, bootToLiveTv,
                 openOnStartChoice, dockTitle, dockRow, topMenu, launcherSettingsButton, reorderButton, showNetworkPill, showInputsPill,
                 iconOnlyButtons, iconOnlyInputs, libraryButton, showLibraryPill, wifiLabelWidth, alwaysShowNames, wallpaperTrueColor, focusOvershoot,
-                vpn, homeSettings, showStats, gameDay, library, librarySelection, libraryOkOpens, libraryColumns, pillLabelsOnFocus, tvSettingsFirst, settingsPanel, shelfEveryRow, uniformRows, heroFeed, themeHeroFeed, heroFeedInterval, rowGap, heroHeight, themeHeroHeight, dateTwoLines, uniformTiles, background,
+                vpn, homeSettings, showStats, gameDay, library, librarySelection, libraryOkOpens, libraryColumns, pillLabelsOnFocus, tvSettingsFirst, settingsPanel, shelfEveryRow, uniformRows, heroFeed, themeHeroFeed, heroFeedInterval, rowGap, heroHeight, themeHeroHeight, dateTwoLines, widgets, themeWidgets, uniformTiles, background,
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, restoreKeyServices, wallpaperEnabled, wallpaper,
                 wallpapers, rotationMinutes, wallpaperDim, dockOpacity, wallpaperOrder, applied, festival, inputKeycodes, appKeys, stockHomeRedirect,
                 json == null ? Collections.emptyList() : raceCalendar(json), cinematic, ambientGlow, appGlow, fadeRows,
@@ -880,12 +902,12 @@ final class Config {
             SharedPreferences.Editor editor = choices.edit();
             if (!"absent".equals(token)) editor.remove("columns").remove("animations")
                     .remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY)
-                    .remove(DOCK_OPACITY_KEY).remove(CLOCK_FORMAT_KEY).remove(HERO_HEIGHT_KEY).remove(HERO_FEED_KEY);
+                    .remove(DOCK_OPACITY_KEY).remove(CLOCK_FORMAT_KEY).remove(HERO_HEIGHT_KEY).remove(HERO_FEED_KEY).remove(WIDGETS_KEY);
             editor.putString(THEME_SIGNATURE_KEY, signature).commit();
         } else if (!seen.equals(signature)) {
             choices.edit().remove("columns").remove("animations")
                     .remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY).remove(DOCK_OPACITY_KEY)
-                    .remove(CLOCK_FORMAT_KEY).remove(HERO_HEIGHT_KEY).remove(HERO_FEED_KEY)
+                    .remove(CLOCK_FORMAT_KEY).remove(HERO_HEIGHT_KEY).remove(HERO_FEED_KEY).remove(WIDGETS_KEY)
                     .putString(THEME_SIGNATURE_KEY, signature).commit();
         }
     }
@@ -927,6 +949,21 @@ final class Config {
     /** The Trakt recommendations toggle (HERO_FEED_KEY): 1 is on, 0 off, anything else leaves the theme's hero_feed. */
     static boolean chosenHeroFeed(int chosen, boolean theme) {
         return chosen == 1 || (chosen != 0 && theme);
+    }
+
+    /**
+     * The chips in force: the saved tick list when there is one (an empty set is a saved none), else the theme's
+     * widgets key; either way only the three names count, in WIDGET_NAMES order, each once.
+     */
+    static List<String> chosenWidgets(Set<String> chosen, List<String> theme) {
+        return chosen != null ? widgetList(new ArrayList<>(chosen)) : theme;
+    }
+
+    /** {@code names} kept to WIDGET_NAMES, in that order, each once; other words are dropped. */
+    static List<String> widgetList(List<String> names) {
+        List<String> out = new ArrayList<>();
+        for (String name : WIDGET_NAMES) if (names.contains(name)) out.add(name);
+        return out;
     }
 
     /** A theme's hero_height value: 0 (auto) or 50 to 130; anything else keeps {@code fallback}. */

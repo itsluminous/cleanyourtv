@@ -41,6 +41,16 @@
     <string name="stats_cpu">CPU %1$d%%</string>
     <string name="stats_memory">Memory %1$d / %2$d MB</string>
     <string name="stats_storage">Storage %1$s free</string>
+    <!-- widgets: the chips beside the date, and the Widgets tick list in Launcher settings. -->
+    <string name="widgets_label">Widgets</string>
+    <string name="widgets_none">None</string>
+    <string name="widget_memory_name">Memory</string>
+    <string name="widget_cpu_name">CPU</string>
+    <string name="widget_storage_name">Storage</string>
+    <string name="widget_cpu">CPU %1$d%%</string>
+    <string name="widget_cpu_freq">CPU %1$.1f GHz</string>
+    <string name="widget_memory">RAM %1$d MB</string>
+    <string name="widget_storage">%1$s free</string>
     <string name="storage_gb_whole">%1$.0f GB</string>
     <string name="storage_gb_decimal">%1$.1f GB</string>
     <string name="dream_name">Clock</string>

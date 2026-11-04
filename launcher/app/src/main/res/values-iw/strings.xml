@@ -39,6 +39,15 @@
     <string name="stats_cpu">מעבד %1$d%%</string>
     <string name="stats_memory">זיכרון %1$d / %2$d MB</string>
     <string name="stats_storage">אחסון %1$s פנוי</string>
+    <string name="widgets_label">יישומונים</string>
+    <string name="widgets_none">ללא</string>
+    <string name="widget_memory_name">זיכרון</string>
+    <string name="widget_cpu_name">מעבד</string>
+    <string name="widget_storage_name">אחסון</string>
+    <string name="widget_cpu">מעבד %1$d%%</string>
+    <string name="widget_cpu_freq">מעבד %1$.1f GHz</string>
+    <string name="widget_memory">RAM %1$d MB</string>
+    <string name="widget_storage">%1$s פנוי</string>
     <string name="storage_gb_whole">%1$.0f GB</string>
     <string name="storage_gb_decimal">%1$.1f GB</string>
     <string name="dream_name">שעון</string>

@@ -587,9 +587,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroArtAlpha = cfg.cinematicArt / 100f;
         if (cinematic) setUpCinematicShelf(cfg.cinematicScrim);
         else heroName.setTextSize(TypedValue.COMPLEX_UNIT_SP, shelfTitleSp(48f));   // the layout's 48sp, scaled with hero_height
+        // A theme with the carousel (hero_feed): the app's name takes the carousel title's size and box too, so the
+        // shelf reads the same whether the carousel is on, off in Launcher settings, or without items.
+        carouselTypography = (cfg.themeHeroFeed || cfg.heroFeed) && dockRow && cfg.dockTitle;
         // The meta line and the dots keep their distance from the name in proportion too (ShelfScale).
-        shelfMargin(heroMeta, 12);
-        shelfMargin(heroDots, 16);
+        shelfTitleStyle();
         if (cfg.heroFeed && dockRow && cfg.dockTitle) setUpHeroFeed(cfg);
         // dock_title false: the name above the dock (and the cinematic lines under it) never shows; the glow
         // still follows the dock.
@@ -2375,6 +2377,28 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** The carousel title's widest and narrowest sizes: 36sp, and 24sp before an ellipsis (five sixths of each at hero_height 60). */
     private static final float CAROUSEL_TITLE_SP = 36f, CAROUSEL_TITLE_MIN_SP = 24f, CAROUSEL_TITLE_WIDTH_DP = 560f;
+    /**
+     * The app's name on the shelf in the carousel title's type (fitCarouselTitle: 36sp in its one-line box, the meta
+     * line 6dp under it) rather than the layout's 48sp or the cinematic 68sp: a theme that has the carousel
+     * (hero_feed), whether or not it is showing. Without it the name was the clock's size next to a 36sp carousel.
+     */
+    private boolean carouselTypography;
+
+    /**
+     * The shelf's title and spacing when it names the focused app: the carousel's own with carouselTypography, the
+     * layout's (48sp, or the cinematic 68sp, the meta line 12dp under the name and the dots 16dp) otherwise.
+     */
+    private void shelfTitleStyle() {
+        if (carouselTypography) {
+            fitCarouselTitle();
+            shelfMargin(heroMeta, 6);
+            shelfMargin(heroDots, 10);
+        } else {
+            unfitCarouselTitle(shelfTitleSp(cinematic ? 68f : 48f));
+            shelfMargin(heroMeta, 12);
+            shelfMargin(heroDots, 16);
+        }
+    }
 
     /**
      * The carousel's title on one line: from 36sp down to 24sp, whichever largest fits 560dp, then an ellipsis. The
@@ -2496,9 +2520,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) hero.getLayoutParams();
         lp.setMarginStart((int) (SHELF_START_DP * density));
         hero.setLayoutParams(lp);
-        unfitCarouselTitle(shelfTitleSp(cinematic ? 68f : 48f));
-        shelfMargin(heroMeta, 12);
-        shelfMargin(heroDots, 16);
+        shelfTitleStyle();
         heroSynopsis.setVisibility(View.GONE);
         heroChips.setVisibility(View.GONE);
         heroChips.removeAllViews();

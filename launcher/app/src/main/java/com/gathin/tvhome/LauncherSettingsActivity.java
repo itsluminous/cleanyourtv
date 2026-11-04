@@ -114,6 +114,11 @@ public final class LauncherSettingsActivity extends Activity {
                 refresh();
             });
         }
+        // uniform_rows: no dock, so Rows below dock and Dock band opacity have nothing to set; both groups are left out.
+        if (config.uniformRows) {
+            hideChoiceGroup(rowChoices[0]);
+            hideChoiceGroup(dockChoices[0]);
+        }
         int[] clockIds = {R.id.clockSystem, R.id.clock12, R.id.clock24};
         for (int i = 0; i < clockIds.length; i++) {
             final String value = CLOCK_FORMATS[i];
@@ -209,6 +214,15 @@ public final class LauncherSettingsActivity extends Activity {
         LinearLayout row = (LinearLayout) views[0].getParent();
         row.removeAllViews();
         for (int i = views.length - 1; i >= 0; i--) row.addView(views[i]);
+    }
+
+    /** Hides a row of numbered choices and the label above it (the child before their row in the shared column). */
+    private static void hideChoiceGroup(View choice) {
+        View group = (View) choice.getParent();
+        LinearLayout column = (LinearLayout) group.getParent();
+        int at = column.indexOfChild(group);
+        if (at > 0) column.getChildAt(at - 1).setVisibility(View.GONE);
+        group.setVisibility(View.GONE);
     }
 
     private void showWallpaperPicker() {

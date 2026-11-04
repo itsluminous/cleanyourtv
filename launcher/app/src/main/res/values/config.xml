@@ -440,6 +440,15 @@
          menu items (Add to dock, Edit dock) are left out, since the first row is only a row. Off by default; a theme
          can set "shelf_every_row": true. -->
     <bool name="shelf_every_row">false</bool>
+    <!-- uniform_rows: no dock. The grid is one flat ordered list laid out columns per row, the first row included, so
+         7 apps per row puts 7 in the top row. The first row has no band, no empty slots and no gap of its own: while
+         this is set, fill_dock reads true, rows_below_dock 0 and shelf_every_row on, so every row scrolls to the same
+         line and the shelf (or the hero_feed carousel) sits above it. The line is the shelf's bottom, scaled by
+         hero_height; the rows fill downward from it and Down scrolls. dock_apps only seeds the head of the order
+         until the owner reorders; dock_band, dock_opacity, dock_glass, dock_even_padding do nothing. Launcher
+         settings leaves out Rows below dock and Dock band opacity. Needs dock_row; single_row wins over it. Off by
+         default; a theme can set "uniform_rows": true. -->
+    <bool name="uniform_rows">false</bool>
     <!-- hero_feed: the top shelf is a carousel of the Trakt companion app's titles (the Trakt shelf add-on, read through its
          content provider): backdrop faded into the wallpaper, title, year, synopsis, IMDb / RT / Trakt chips and
          dots, one item every hero_feed_interval seconds (3 to 120). While that app has items the carousel owns the

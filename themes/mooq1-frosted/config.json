@@ -7,9 +7,7 @@
     "io.gh.reisxd.tizentube.cobalt",
     "com.lagradost.cloudstream3"
   ],
-  "fill_dock": false,
   "columns": 6,
-  "rows_below_dock": 1,
   "hidden_apps": [
     "com.mediatek.wwtv.tvcenter",
     "com.leanbitlab.ltvL",
@@ -28,7 +26,6 @@
   "wallpaper": true,
   "cinematic_home": true,
   "cinematic_art": 35,
-  "dock_glass": true,
   "glass_style": "glass",
   "glow_style": "horizon",
   "app_glow": true,
@@ -37,13 +34,13 @@
   "tile_menu": true,
   "icon_only_buttons": true,
   "icon_only_inputs": true,
-  "dock_band": false,
   "pill_labels_on_focus": true,
   "library_columns": 6,
   "launcher_settings_button": true,
   "tv_settings_first": true,
   "settings_panel": true,
   "shelf_every_row": true,
+  "uniform_rows": true,
   "hero_feed": true,
   "hero_feed_interval": 8,
   "row_gap": 32

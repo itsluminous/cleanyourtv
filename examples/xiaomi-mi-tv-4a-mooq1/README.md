@@ -10,7 +10,7 @@ firmware line, with one owner's checklist answers applied.
 | File | What it is |
 |---|---|
 | `debloat.txt` | The 27 packages that were disabled, in the five batches they went in, with the state the TV was found in at the top. |
-| `config.json` | The launcher theme, a copy of [`themes/mooq1-frosted/config.json`](../../themes/mooq1-frosted/config.json): a six-app dock, six columns, the frosted slate wallpaper, the Trakt carousel on the top shelf. |
+| `config.json` | The launcher theme, a copy of [`themes/mooq1-frosted/config.json`](../../themes/mooq1-frosted/config.json): no dock (`uniform_rows`), six columns in every row, the frosted slate wallpaper, the Trakt carousel on the top shelf. |
 
 ```bash
 TV_HOST=<tv ip> tools/disable.sh examples/xiaomi-mi-tv-4a-mooq1/debloat.txt      # apply
@@ -69,21 +69,23 @@ The theme (`config.json` here, pushed from `themes/mooq1-frosted`):
 
 | Key | Value here | Effect |
 |---|---|---|
-| `dock_apps` (six), `fill_dock: false`, `columns: 6`, `rows_below_dock: 1` | SmartTube, Stremio, NetMirror, SportzX, TizenTube, CloudStream | A six-slot dock and six tiles per row, one grid row under the dock. |
+| `uniform_rows`, `columns: 6`, `dock_apps` (six) | SmartTube, Stremio, NetMirror, SportzX, TizenTube, CloudStream | No dock: every row, the first too, holds six tiles of one order, so 7 per row in the panel puts 7 in the top row. `dock_apps` only seeds the head of that order on a TV without a saved order; it also keys the saved order (`order.txt` records the `dock_apps` it was made under), so it stays in the theme. `fill_dock`, `rows_below_dock`, `dock_band` and `dock_glass` do nothing in this mode and are left out. |
 | `hidden_apps` | the MediaTek TV centre, LtvLauncher, Mi Wallpaper, Mi Gallery | Off the grid, still installed; the All apps popup opens them. |
 | `live_tv_package` | `com.mediatek.wwtv.tvcenter` | The Inputs pill's Live TV row. |
 | `library_apps`, `app_library`, `library_button`, `library_ok_opens`, `library_columns: 6` | | The All apps popup as a six-column grid, with one non-TV app (a camera viewer) pre-added. |
-| `wallpaper: true`, `background_color: #101828`, `cinematic_home`, `cinematic_art: 35`, `dock_glass`, `glass_style: glass`, `glow_style: horizon`, `app_glow`, `advanced_effects`, `dock_band: false`, `focus_overshoot: false` | | The frosted slate look: a pre-blurred wallpaper (the launcher never blurs at runtime), a glass dock without the band, the horizon glow in the app's colour. |
+| `wallpaper: true`, `background_color: #101828`, `cinematic_home`, `cinematic_art: 35`, `glass_style: glass`, `glow_style: horizon`, `app_glow`, `advanced_effects`, `focus_overshoot: false` | | The frosted slate look: a pre-blurred wallpaper (the launcher never blurs at runtime), tiles floating on it with no band, the horizon glow in the app's colour. |
 | `icon_only_buttons`, `icon_only_inputs`, `pill_labels_on_focus`, `show_greeting: false`, `clock_format: system` | | Round icon-only pills that grow to their name while focused; no greeting. |
 | `tile_menu`, `launcher_settings_button`, `tv_settings_first`, `settings_panel` | | Hold OK on a tile for Move / Remove from Home / App info; a click on Settings opens the side panel with TV system settings first. |
-| `shelf_every_row`, `hero_feed`, `hero_feed_interval: 8`, `row_gap: 32` | | Every row scrolls up under the shelf like the dock; the shelf is the Trakt carousel, one title every 8 seconds; rows about 30% closer. No `hero_height`: the shelf is the layout's own 100% while the carousel is on and 80% once it is turned off in the panel. |
+| `shelf_every_row`, `hero_feed`, `hero_feed_interval: 8`, `row_gap: 32` | | Every row scrolls up to the same line under the shelf (`uniform_rows` turns this on by itself; the key stays for a launcher without it); the shelf is the Trakt carousel, one title every 8 seconds; rows about 30% closer. No `hero_height`: the first row rests on the shelf's bottom, the layout's own 100% while the carousel is on and 80% once it is turned off in the panel. |
 
 The settings panel also carries **Trakt recommendations** (On, Off: the carousel over the theme's `hero_feed`, so
 this theme runs without Trakt too; the picker marks On, the theme's state, until you pick), **Hero banner height**
 (Compact 60, Short 80, Normal 100, Tall 120; the picker marks the height in force, Normal (100%) with the carousel and
 Short (80%) without it, no "Theme default" entry) and **Backup & restore** (Back up settings, Restore from file, Import
-from another launcher); **Rows below dock** reads **Rows shown below the first row** here, since with `shelf_every_row`
-no row is the dock. See the
+from another launcher). With `uniform_rows` the panel has no **Rows below dock** or **Dock band opacity** row, and
+the panel never shows **Follow theme** or **Wallpaper**: a choice saved on the TV is cleared by pushing the theme again
+(`tools/theme.sh themes/mooq1-frosted`; every push writes a new `theme_revision`, and `Config.syncThemeChoices` drops
+every saved choice when that changes) or by **Restore from file**. See the
 fork's [README](../../README.md#backup--restore). The Wi-Fi pill says "Wi-Fi" rather than the network's name
 because Location is off on this TV: Android 10 only hands the SSID to apps while Location is on.
 

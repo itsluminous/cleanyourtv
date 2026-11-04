@@ -184,6 +184,12 @@ final class Config {
     /** Every row behaves like the dock: the focused row scrolls up under the shelf, which names its app (shelf_every_row). */
     final boolean shelfEveryRow;
     /**
+     * No dock (uniform_rows): one flat order laid out columns per row, the first row too, with no band, empty slots or
+     * gap of its own; fill_dock reads true, rows_below_dock 0 and shelf_every_row on while it is set (UniformRows).
+     * Needs dock_row and not single_row.
+     */
+    final boolean uniformRows;
+    /**
      * The top shelf cycles the Trakt companion's items while the dock is at rest (hero_feed), every heroFeedInterval
      * seconds; the Trakt recommendations toggle in Launcher settings (HERO_FEED_KEY) overrides the theme's key.
      */
@@ -328,7 +334,7 @@ final class Config {
                    String sourcePanelExtra, boolean coocaaSources, String inputAction, List<String> inputSources,
                    String inputUriScheme, int columns, int rowsBelowDock, boolean animations, boolean advancedEffects,
                    boolean shamsiDate, String greetingName, boolean moduleCards, boolean reducedMotion, boolean bootToLiveTv, boolean openOnStartChoice, boolean dockTitle, boolean dockRow, boolean topMenu, boolean launcherSettingsButton, boolean reorderButton, boolean showNetworkPill, boolean showInputsPill, boolean iconOnlyButtons, boolean iconOnlyInputs, boolean libraryButton, boolean showLibraryPill, int wifiLabelWidth, boolean alwaysShowNames, boolean wallpaperTrueColor, boolean focusOvershoot, String vpnApp,
-                   boolean showHomeSettingsShortcut, boolean showStats, String gameDay, boolean appLibrary, boolean appLibrarySelection, boolean libraryOkOpens, int libraryColumns, boolean pillLabelsOnFocus, boolean tvSettingsFirst, boolean settingsPanel, boolean shelfEveryRow, boolean heroFeed, boolean themeHeroFeed, int heroFeedInterval, int rowGap, int heroHeight, int themeHeroHeight, boolean uniformTiles, int backgroundColor, int skyIntensity,
+                   boolean showHomeSettingsShortcut, boolean showStats, String gameDay, boolean appLibrary, boolean appLibrarySelection, boolean libraryOkOpens, int libraryColumns, boolean pillLabelsOnFocus, boolean tvSettingsFirst, boolean settingsPanel, boolean shelfEveryRow, boolean uniformRows, boolean heroFeed, boolean themeHeroFeed, int heroFeedInterval, int rowGap, int heroHeight, int themeHeroHeight, boolean uniformTiles, int backgroundColor, int skyIntensity,
                    int[] settingsKeycodes, boolean settingsKeyPanel, boolean restoreKeyServices, boolean wallpaperEnabled, File wallpaper, List<File> wallpapers,
                    int wallpaperRotationMinutes, int wallpaperDim, int dockOpacity, String wallpaperOrder, boolean overlayApplied,
                    Festival festival, int[] inputKeycodes, List<String> appKeys, String stockHomeRedirect,
@@ -406,6 +412,7 @@ final class Config {
         this.tvSettingsFirst = tvSettingsFirst;
         this.settingsPanel = settingsPanel;
         this.shelfEveryRow = shelfEveryRow;
+        this.uniformRows = uniformRows;
         this.heroFeed = heroFeed;
         this.themeHeroFeed = themeHeroFeed;
         this.heroFeedInterval = heroFeedInterval;
@@ -550,6 +557,7 @@ final class Config {
         boolean tvSettingsFirst = res.getBoolean(R.bool.tv_settings_first);
         boolean settingsPanel = res.getBoolean(R.bool.settings_panel);
         boolean shelfEveryRow = res.getBoolean(R.bool.shelf_every_row);
+        boolean uniformRows = res.getBoolean(R.bool.uniform_rows);
         boolean heroFeed = res.getBoolean(R.bool.hero_feed);
         int heroFeedInterval = res.getInteger(R.integer.hero_feed_interval);
         int rowGap = res.getInteger(R.integer.row_gap);
@@ -673,6 +681,7 @@ final class Config {
             tvSettingsFirst = bool(json, "tv_settings_first", tvSettingsFirst);
             settingsPanel = bool(json, "settings_panel", settingsPanel);
             shelfEveryRow = bool(json, "shelf_every_row", shelfEveryRow);
+            uniformRows = bool(json, "uniform_rows", uniformRows);
             heroFeed = bool(json, "hero_feed", heroFeed);
             heroFeedInterval = integer(json, "hero_feed_interval", heroFeedInterval, 3, 120);
             rowGap = integer(json, "row_gap", rowGap, 29, 90);  // 29 is AppAdapter.MIN_ROW_GAP_DP
@@ -737,6 +746,14 @@ final class Config {
         if (chosenColumns >= 4 && chosenColumns <= 7) columns = chosenColumns;
         int chosenRows = choices.getInt(ROWS_BELOW_DOCK_KEY, rowsBelow);
         if (chosenRows >= 0 && chosenRows <= 3) rowsBelow = chosenRows;
+        // uniform_rows: no dock, so the first row has no empty slots (fill_dock) and no rows are counted under it
+        // (rows_below_dock: the rows fill downward from the shelf's bottom); every row takes the shelf (shelf_every_row).
+        uniformRows = UniformRows.on(uniformRows, dockRow, singleRow);
+        if (uniformRows) {
+            fillDock = true;
+            rowsBelow = 0;
+            shelfEveryRow = true;
+        }
         // The Trakt recommendations toggle, then the shelf height: its auto default (0) follows the feed as toggled.
         boolean themeHeroFeed = heroFeed;
         heroFeed = chosenHeroFeed(choices.getInt(HERO_FEED_KEY, -1), heroFeed);
@@ -784,7 +801,7 @@ final class Config {
                 Math.max(0, rowsBelow), animations, advancedEffects, shamsi, greetingName, moduleCards, reducedMotion, bootToLiveTv,
                 openOnStartChoice, dockTitle, dockRow, topMenu, launcherSettingsButton, reorderButton, showNetworkPill, showInputsPill,
                 iconOnlyButtons, iconOnlyInputs, libraryButton, showLibraryPill, wifiLabelWidth, alwaysShowNames, wallpaperTrueColor, focusOvershoot,
-                vpn, homeSettings, showStats, gameDay, library, librarySelection, libraryOkOpens, libraryColumns, pillLabelsOnFocus, tvSettingsFirst, settingsPanel, shelfEveryRow, heroFeed, themeHeroFeed, heroFeedInterval, rowGap, heroHeight, themeHeroHeight, uniformTiles, background,
+                vpn, homeSettings, showStats, gameDay, library, librarySelection, libraryOkOpens, libraryColumns, pillLabelsOnFocus, tvSettingsFirst, settingsPanel, shelfEveryRow, uniformRows, heroFeed, themeHeroFeed, heroFeedInterval, rowGap, heroHeight, themeHeroHeight, uniformTiles, background,
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, restoreKeyServices, wallpaperEnabled, wallpaper,
                 wallpapers, rotationMinutes, wallpaperDim, dockOpacity, wallpaperOrder, applied, festival, inputKeycodes, appKeys, stockHomeRedirect,
                 json == null ? Collections.emptyList() : raceCalendar(json), cinematic, ambientGlow, appGlow, fadeRows,

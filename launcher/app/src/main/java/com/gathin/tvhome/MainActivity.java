@@ -295,6 +295,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean reducedMotion;
     /** config.xml dock_row: the first row is a separate dock (band, parked low, top shelf) rather than plain grid. */
     private boolean dockRow;
+    /** uniform_rows (UniformRows): no dock; the first row is the first COLUMNS tiles of one order, with no band or gap. */
+    private boolean uniformRows;
     /** config single_row: every app in the dock's row, scrolling sideways, no grid below. */
     private boolean singleRow;
     /** The highlight springs past its target (config.xml, focus_overshoot); false goes straight there. */
@@ -518,6 +520,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         dockRow = cfg.dockRow;
         singleRow = cfg.singleRow;
         shelfEveryRow = cfg.shelfEveryRow && dockRow && !singleRow;
+        uniformRows = cfg.uniformRows;
         heroHeightPct = cfg.heroHeight;
         focusOvershoot = cfg.focusOvershoot;
         festival = cfg.festival;
@@ -724,7 +727,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             public void onChildViewDetachedFromWindow(@NonNull View v) {
             }
         });
-        if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockGlass, cfg.dockEvenPadding, cfg.dockBand,
+        // uniform_rows: no band and no offsets of its own for the first row; it is a row like the others.
+        if (dockRow && !uniformRows) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockGlass, cfg.dockEvenPadding, cfg.dockBand,
                 singleRow, cfg.dockBandAll).bottomDp(AppAdapter.dockBottomDp(cfg.rowGap)));
         if (cfg.fadeRows) TopFade.attach(grid, 48 * density);
         // Reduced motion: the tiles are simply there, with no entrance (reloadApps skips it there too).
@@ -748,7 +752,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             int inner = (r - l) - grid.getPaddingLeft() - grid.getPaddingRight();
             int tileW = AppAdapter.tileWidthPx(inner, h, COLUMNS, rowsBelowDock, cfg.dockTitle, cfg.dockRow, density, cfg.rowGap, heroHeightPct);
             int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(tileW), true, density, cfg.rowGap);
-            int dockRow = itemH + (int) (AppAdapter.dockExtraDp(cfg.rowGap) * density);   // item height plus DockDecoration offsets
+            // The first row's height: item height plus DockDecoration's offsets, or with uniform_rows the item alone.
+            int dockRow = itemH + (uniformRows ? 0 : (int) (AppAdapter.dockExtraDp(cfg.rowGap) * density));
             int gridRows = itemH * rowsBelowDock;
             // Keep the hero below the header when the library is enabled on a short screen,
             // even when the theme requests an extra visible row below the dock.
@@ -765,6 +770,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (MainActivity.this.dockRow && cfg.dockTitle && rowsBelowDock > 0) want = Math.max(want, (int) (AppAdapter.TITLE_ROOM_DP * density));
             // No dock to push down: the grid starts at the top, with room for the first row's zoom and glass.
             if (!MainActivity.this.dockRow) want = (int) (AppAdapter.TOP_ROOM_DP * density);
+            // uniform_rows: no dock to park and no rows counted under it. The first row rests on the shelf's bottom
+            // (the carousel's full height or the measured shelf, plus the 40dp gap) at hero_height, and the rows fill
+            // downward from there; those that do not fit scroll up on Down.
+            if (uniformRows) want = UniformRows.restingLinePx(UniformRows.shelfRoomPx(hero.getMeasuredHeight(), carouselRoom, density), heroHeightPct);
             // A single row never shows the names under its tiles (the title above the row names the app), so the
             // 7dp gap and 22dp label item_app.xml keeps for them would only lift the row: sit it that much lower.
             if (singleRow && !cfg.alwaysShowNames) want += (int) (29 * density);
@@ -1912,7 +1921,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         float h = card.getHeight() * scale + 2 * pad;
         float x = r.exactCenterX() - w / 2f;
         // advanced_effects lifts a focused grid tile by 4dp and the glass follows it; dock tiles stay put (#2135).
-        boolean lifted = advancedEffects && !DockSlots.inDockRow(dockRow, singleRow, position, COLUMNS);
+        // With uniform_rows no tile is a dock tile, so every one lifts.
+        boolean lifted = advancedEffects && (uniformRows || !DockSlots.inDockRow(dockRow, singleRow, position, COLUMNS));
         float y = r.exactCenterY() - h / 2f - (lifted ? 4f * density : 0f);
 
         ViewGroup.LayoutParams lp = glass.getLayoutParams();
@@ -1957,7 +1967,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // Dock (or, with shelf_every_row, any row): park it at the bottom of the screen and show the top shelf for
             // this app. In a single row
             // every tile is in the dock's row, which never scrolls vertically.
-            int decoratedTop = item.getTop() - (int) (6 * density);
+            // DockDecoration's 6dp above the row; with uniform_rows there is none, and every row lands on the line itself.
+            int decoratedTop = item.getTop() - (uniformRows ? 0 : (int) (6 * density));
             int dy = decoratedTop - grid.getPaddingTop();
             // A 1px mismatch used to start a scroll on every dock move. Only scroll when the row is
             // actually off; reduced motion does it in one jump so it does not fight the highlight.
@@ -2594,11 +2605,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void updateHeroDots(int position) {
         if (!heroDotsShown) return;
         int count = Math.min(adapter.dockFilled(), COLUMNS);
-        if (shelfEveryRow) {
-            // One dot per app in the focused row: the last row may be short.
-            int rowStart = position - position % COLUMNS;
-            count = Math.min(COLUMNS, adapter.getItemCount() - rowStart);
-        }
+        // One dot per app in the focused row: the last row may be short (shelf_every_row, and so uniform_rows).
+        if (shelfEveryRow) count = UniformRows.rowCount(position, COLUMNS, adapter.getItemCount());
         drawDots(count, shelfEveryRow ? position % COLUMNS : position);
     }
 

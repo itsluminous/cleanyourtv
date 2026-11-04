@@ -52,8 +52,8 @@ Click **Settings** for the TV's own settings. Hold OK on it for its menu:
   TCL/FFALCON and Fire OS are in `settings_fallback_components` - because that app holds pages
   Android's has no row for, such as Xiaomi's Account & Security with the ADB switch.
 - **Module cards**, with `module_cards`.
-- **Edit dock**, with `dock_row` (left out, with **Add to dock**, while `shelf_every_row` is on: every row then
-  behaves like the dock).
+- **Edit dock**, with `dock_row` (left out, with **Add to dock**, while `shelf_every_row` is on, which
+  `uniform_rows` turns on by itself: every row then behaves like the dock).
 - **Reorder apps**: OK picks an app up, the arrows move it, Back places it, and Back again finishes.
   With `tile_menu` (on by default since 3.3), holding OK on a tile offers **Move**, which picks that app up straight away. Leaving it
   no longer recreates Home.
@@ -63,18 +63,18 @@ Click **Settings** for the TV's own settings. Hold OK on it for its menu:
 The launcher's own page has these rows, top to bottom:
 
 - **Reorder apps**, only with `launcher_settings_button`, the same as the menu's.
-- **Apps per row** 4, 5, 6 or 7; **Rows below dock** 0 to 3, how many rows of tiles stay visible under the
-  dock band; **Dock band opacity** 100%, 70%, 50% or 30%. The last two only do anything while the dock is
-  its own row (`dock_row`, on by default). In the side panel (`settings_panel`) with `shelf_every_row` on, where
-  no row is the dock, the rows row reads **Rows shown below the first row**, with the line "How many rows sit
-  under the first row at rest; more rows scroll up on Down"; the key and values are the same.
+- **Apps per row** 4, 5, 6 or 7 (with `uniform_rows` the first row too takes that many); **Rows below dock** 0 to 3,
+  how many rows of tiles stay visible under the dock band; **Dock band opacity** 100%, 70%, 50% or 30%. The last two
+  only do anything while the dock is its own row (`dock_row`, on by default), and both are left out, on the page and
+  in the panel, while `uniform_rows` is on, since there is no dock then. In the side panel (`settings_panel`) with
+  `shelf_every_row` on, where no row is the dock, the rows row reads **Rows shown below the first row**, with the line
+  "How many rows sit under the first row at rest; more rows scroll up on Down"; the key and values are the same.
 - **Clock**: **System** follows the TV's 12- or 24-hour setting; **12-hour** or **24-hour** sets the launcher's
   clocks (Home and the clock screensaver) to that, whatever the TV uses (`clock_format` in a theme).
 - **Wallpaper**: one picture from the theme's collection (or its `wallpaper.jpg`), **None**, or **Theme
   default**. A pick holds that picture and stops the rotation until you choose Theme default, press
-  Follow theme, or push the theme again. The side panel has no Theme default row: its picker marks the
-  wallpaper in force (the theme's picture, or **Rotate the collection** when the theme rotates one), and that
-  rotation row is what clears a pick.
+  Follow theme, or push the theme again. The side panel has no Wallpaper row (a TV has no file picker; a
+  theme push or a restore sets the wallpaper).
 - **Animations** on or off, and **Advanced effects** (tile lift, icon zoom and smooth ambient-colour
   transitions; they may use more memory) once animations are on.
 - **Open on start**, only with `open_on_start_choice`: Off, or an app that opens instead of Home the first
@@ -83,7 +83,8 @@ The launcher's own page has these rows, top to bottom:
   a shorter shelf lifts the dock and shows more rows (`hero_height` in a theme). The row and its picker show the
   height in force: a saved choice, else the theme's `hero_height`, else with the default `0` (auto) Normal (100%)
   while the Trakt carousel is on and Short (80%) without it. A theme height outside the four joins the picker as
-  its own row ("70%"). There is no Theme default entry; **Follow theme** hands the choice back to the theme.
+  its own row ("70%"). There is no Theme default entry; **Follow theme** (the full-screen page) or a theme push
+  hands the choice back to the theme.
 - **Trakt recommendations**: On or Off, the Trakt shelf companion's carousel on the top shelf (`hero_feed` in a
   theme); the row and its picker show the state in force, the theme's until you pick one. Off leaves the launcher exactly as with `hero_feed: false`: the shelf names the
   focused app and the companion is never read. The row is always there, and says when the Trakt shelf app is
@@ -94,7 +95,9 @@ The launcher's own page has these rows, top to bottom:
   launcher** copies the settings of the same launcher installed under another package name. The read-only
   provider `content://<package>.backup/settings` exports the same JSON over ADB.
 - **Follow theme (reset on-TV choices)**, which clears every choice above. Pushing or resetting a theme
-  clears them too.
+  clears them too (every push writes a new `theme_revision`, and the launcher drops its saved choices when that
+  changes), and so does **Restore from file**; the side panel (`settings_panel`) has no Follow theme row and relies
+  on those two.
 - **Choose default home** opens Android's home picker, and **TV system settings** the TV's own settings
   page.
 

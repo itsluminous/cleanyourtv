@@ -31,8 +31,11 @@ import java.util.function.Consumer;
  * right over Home, with a title, a section caption, and rows of icon, title and the current value. A row with
  * several values opens a second page in the same panel (a list with the current one marked); Back returns. The
  * value a row shows, and the row its picker marks, is the one in force: the saved choice, else what the theme gives,
- * so no picker has a "Theme default" row; the Follow theme row is the one place that clears the saved choices.
- * Everything is drawn in code so the panel costs no layout resource.
+ * so no picker has a "Theme default" row. The panel has no Follow theme or Wallpaper row (the full-screen page keeps
+ * both): a TV has no file picker, and a theme push (tools/theme.sh) or a Backup &amp; restore clears every saved
+ * choice, as Config.syncThemeChoices does when the theme's signature changes. With uniform_rows there is no dock,
+ * so Rows below dock and Dock band opacity are left out too. Everything is drawn in code so the panel costs no
+ * layout resource.
  */
 final class SettingsPanel {
     private static final int PANEL_BG = 0xFF1B1E22, ROW_FOCUS = 0xFF2F3338, CAPTION = 0xFF4C8DF5, SUBTITLE = 0xFFA7ADB4;
@@ -128,7 +131,8 @@ final class SettingsPanel {
         // auto rule and its row read it, so it comes before them.
         int chosenFeed = choices.getInt(Config.HERO_FEED_KEY, -1);
         boolean feedNow = Config.chosenHeroFeed(chosenFeed, config.themeHeroFeed);
-        if (config.dockRow) {
+        // uniform_rows: no dock, so nothing sits below it and no band has an opacity; the two rows are left out.
+        if (config.dockRow && !config.uniformRows) {
             int rows = choices.getInt(Config.ROWS_BELOW_DOCK_KEY, config.rowsBelowDock);
             // shelf_every_row: every row scrolls to the dock's line, so there is no dock in the owner's eyes; the row
             // keeps its key and values but names the first row, and says what the number does.
@@ -150,10 +154,12 @@ final class SettingsPanel {
                 choose(activity.getString(R.string.dock_opacity_label), labels, checked, which ->
                         save(e -> e.putInt(Config.DOCK_OPACITY_KEY, DOCK_OPACITIES[which])));
             });
-            // Hero banner height: the shelf's share of the room above the dock. The row and its picker show the
+        }
+        if (config.dockRow) {
+            // Hero banner height: the shelf's share of the room above the first row. The row and its picker show the
             // height in force, Config.chosenHeroHeight: the saved choice, else the theme's hero_height, else with its
-            // 0 (auto) 100 while the Trakt carousel is on and 80 without it. A pick saves that level; the Follow
-            // theme row below is what hands the choice back to the theme.
+            // 0 (auto) 100 while the Trakt carousel is on and 80 without it. A pick saves that level; a theme push
+            // hands the choice back to the theme.
             int heroNow = Config.chosenHeroHeight(choices.getInt(Config.HERO_HEIGHT_KEY, -1), config.themeHeroHeight, feedNow);
             row(R.drawable.ic_picture, activity.getString(R.string.hero_height_label), heroHeightLabel(heroNow), v -> {
                 int[] levels = heroHeightChoices(heroNow);
@@ -180,7 +186,6 @@ final class SettingsPanel {
         row(R.drawable.ic_livetv, activity.getString(R.string.dream_name), clockLabels[clockIndex], v ->
                 choose(activity.getString(R.string.dream_name), clockLabels, clockIndex, which ->
                         save(e -> e.putString(Config.CLOCK_FORMAT_KEY, CLOCK_FORMATS[which]))));
-        row(R.drawable.ic_picture, activity.getString(R.string.wallpaper_label), wallpaperLabel(), v -> showWallpaper());
 
         boolean animations = choices.getBoolean("animations", config.animations);
         boolean advanced = animations && choices.getBoolean("advanced_effects", config.advancedEffects);
@@ -200,17 +205,6 @@ final class SettingsPanel {
         if (config.openOnStartChoice) {
             row(R.drawable.ic_input, activity.getString(R.string.open_on_start_label), openOnStartLabel(), v -> showOpenOnStart());
         }
-        View follow = row(R.drawable.ic_lock_open, activity.getString(R.string.follow_theme),
-                activity.getString(R.string.follow_theme_hint), v -> {
-            choices.edit().remove("columns").remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
-                    .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY)
-                    .remove(Config.DOCK_OPACITY_KEY).remove(Config.CLOCK_FORMAT_KEY).remove(Config.HERO_HEIGHT_KEY)
-                    .remove(Config.HERO_FEED_KEY).remove(OpenOnStart.KEY).commit();
-            changed.run();
-            showMain();
-        });
-        follow.setEnabled(hasOnTvChoices());
-        follow.setAlpha(hasOnTvChoices() ? 1f : 0.5f);
         row(R.drawable.ic_home_settings, activity.getString(R.string.home_settings),
                 activity.getString(R.string.home_settings_help), v -> open(new Intent(activity, HomeSettingsActivity.class)));
         showBackupRows();
@@ -302,33 +296,6 @@ final class SettingsPanel {
         (focus != null ? focus : list.getChildAt(0)).requestFocus();
     }
 
-    /**
-     * The Wallpaper picker: the theme's pictures by name (its wallpaper.jpg first), a row for its rotating collection
-     * when it has one, and None; the marked row is the wallpaper in force, so with no saved pick the theme's own. A
-     * picture or None saves that pick; the collection row clears it, so the theme rotates again.
-     */
-    private void showWallpaper() {
-        File dir = Config.dir(activity);
-        List<File> collection = WallpaperRotation.images(dir == null ? null : new File(dir, "wallpapers"));
-        List<File> images = new ArrayList<>(collection);
-        File single = dir == null ? null : new File(dir, Config.WALLPAPER_NAME);
-        if (single != null && single.isFile()) images.add(0, single);
-        boolean rotation = config.wallpaperRotationMinutes > 0 && collection.size() > 1;
-        List<String> labels = new ArrayList<>();
-        if (rotation) labels.add(activity.getString(R.string.wallpaper_rotation, collection.size()));
-        for (File image : images) labels.add(image.getName());
-        labels.add(activity.getString(R.string.wallpaper_none));
-        int first = rotation ? 1 : 0, none = labels.size() - 1;
-        String current = effectiveWallpaper();
-        int checked = current == null ? 0 : none;
-        for (int i = 0; i < images.size(); i++) if (images.get(i).getName().equals(current)) checked = first + i;
-        choose(activity.getString(R.string.wallpaper_label), labels.toArray(new String[0]), checked, which -> save(e -> {
-            if (rotation && which == 0) e.remove(Config.WALLPAPER_CHOICE_KEY);
-            else if (which == none) e.putString(Config.WALLPAPER_CHOICE_KEY, "none");
-            else e.putString(Config.WALLPAPER_CHOICE_KEY, images.get(which - first).getName());
-        }));
-    }
-
     private void showOpenOnStart() {
         PackageManager pm = activity.getPackageManager();
         List<String[]> apps = new ArrayList<>();
@@ -376,23 +343,6 @@ final class SettingsPanel {
 
     private String onOff(boolean on) { return activity.getString(on ? R.string.on : R.string.off); }
 
-    /**
-     * The wallpaper in force: the saved pick ("none" or a file name), else the theme's: its one picture's name, "none"
-     * when it shows no wallpaper, or null for a rotating collection.
-     */
-    private String effectiveWallpaper() {
-        String current = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
-        if (current != null) return current;
-        if (!config.wallpaperEnabled || config.wallpapers.isEmpty()) return "none";
-        return config.wallpapers.size() > 1 ? null : config.wallpapers.get(0).getName();
-    }
-
-    private String wallpaperLabel() {
-        String current = effectiveWallpaper();
-        if (current == null) return activity.getString(R.string.wallpaper_rotation, config.wallpapers.size());
-        return "none".equals(current) ? activity.getString(R.string.wallpaper_none) : current;
-    }
-
     private String openOnStartLabel() {
         String pkg = choices.getString(OpenOnStart.KEY, "");
         if (pkg.isEmpty()) return activity.getString(R.string.off);
@@ -402,14 +352,6 @@ final class SettingsPanel {
         } catch (PackageManager.NameNotFoundException e) {
             return pkg;
         }
-    }
-
-    private boolean hasOnTvChoices() {
-        return choices.contains("columns") || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
-                || choices.contains("animations") || choices.contains("advanced_effects")
-                || choices.contains(Config.WALLPAPER_CHOICE_KEY) || choices.contains(Config.DOCK_OPACITY_KEY)
-                || choices.contains(Config.CLOCK_FORMAT_KEY) || choices.contains(Config.HERO_HEIGHT_KEY)
-                || choices.contains(Config.HERO_FEED_KEY) || choices.contains(OpenOnStart.KEY);
     }
 
     /**

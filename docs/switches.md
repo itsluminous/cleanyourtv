@@ -73,6 +73,7 @@ rule sit on its wanted list until a screenshot arrives.
 | `tv_settings_first` | <img src="switches/tv_settings_first.jpg" width="320" alt="tv_settings_first: Launcher settings with TV system settings as its first row"> |
 | `settings_panel` | <img src="switches/settings_panel.jpg" width="320" alt="settings_panel: Launcher settings as a side panel over Home"> |
 | `shelf_every_row` | <img src="switches/shelf_every_row.jpg" width="320" alt="shelf_every_row: the second row scrolled up under the shelf, which names its app"> |
+| `uniform_rows` | <img src="switches/uniform_rows.jpg" width="320" alt="uniform_rows at 7 apps per row: seven tiles in the top row too, no dock band, the Trakt carousel above"> |
 | `hero_feed` | <img src="switches/hero_feed.jpg" width="320" alt="hero_feed: the Trakt carousel on the top shelf, a title with its synopsis and rating chips over its backdrop"> |
 | `hero_feed_interval` | <img src="switches/hero_feed.jpg" width="320" alt="hero_feed_interval: the same carousel, one title every N seconds"> |
 | `row_gap` | <img src="../themes/mooq1-frosted/screenshot.jpg" width="320" alt="row_gap 32: the dock and the row under it about 30% closer"> |

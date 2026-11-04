@@ -46,7 +46,9 @@ import java.util.Set;
 /**
  * App tiles. The first {@link MainActivity#COLUMNS} positions are the pinned dock (favourites, fixed order,
  * then empty slots up to a full row, see {@link DockSlots}), then the module cards the owner chose to show
- * (by label), the rest is alphabetical.
+ * (by label), the rest is alphabetical. With uniform_rows ({@link UniformRows}) there is no dock: Config has
+ * resolved fill_dock true and rows_below_dock 0, so the first row is simply the first {@code columns} tiles of
+ * the one order, with no empty slots, and the tile fit reads the width alone.
  */
 public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -235,6 +237,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final boolean dockRow;
     /** config single_row: tiles sit in one sideways row, each as wide as a grid column would be. */
     private final boolean singleRow;
+    /** uniform_rows: no dock, so no tile is the dock's kind (every focused tile lifts alike with advanced_effects). */
+    private final boolean uniformRows;
     /** config always_show_names: the alpha of an unfocused tile's name (0 hides it). */
     private final float restNameAlpha;
     /** cinematic_home: only then does a launch record the last-opened app the shelf uses. */
@@ -292,6 +296,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         this.heroHeightPct = cfg.heroHeight;
         this.dockRow = cfg.dockRow;
         this.singleRow = cfg.singleRow;
+        this.uniformRows = cfg.uniformRows;
         this.restNameAlpha = cfg.alwaysShowNames ? 0.75f : 0f;
         this.cinematic = cfg.cinematicHome;
         this.launchActions = cfg.launchActions;
@@ -533,7 +538,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         h.name.setText(e.name);
         // The dock has no labels, unless always_show_names asks for them (DockDecoration then makes room in the band).
         // In a single row every tile is the dock's kind: the big title above names it.
-        boolean dockKind = DockSlots.inDockRow(dockRow, singleRow, position, dockSize);
+        boolean dockKind = !uniformRows && DockSlots.inDockRow(dockRow, singleRow, position, dockSize);
         h.name.setVisibility(nameVisibility(dockKind));
         h.inDock = dockKind;
         boolean focused = h.card.isFocused();   // a rebind after reload() can hit the focused tile
@@ -751,7 +756,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     /** Re-applies the name label's visibility to a bound holder in place (setNamesUnderTiles changed it). */
     void refreshName(Holder h, int position) {
         if (position < 0 || position >= items.size() || items.get(position).kind == Entry.EMPTY) return;
-        h.name.setVisibility(nameVisibility(DockSlots.inDockRow(dockRow, singleRow, position, dockSize)));
+        h.name.setVisibility(nameVisibility(!uniformRows && DockSlots.inDockRow(dockRow, singleRow, position, dockSize)));
     }
 
     float focusScale() {
